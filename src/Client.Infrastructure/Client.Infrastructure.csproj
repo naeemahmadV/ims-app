@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <RootNamespace>FSH.BlazorWebAssembly.Client.Infrastructure</RootNamespace>
         <AssemblyName>FSH.BlazorWebAssembly.Client.Infrastructure</AssemblyName>
     </PropertyGroup>
@@ -31,9 +31,7 @@
     </ItemGroup>
 
     <Target Name="NSwag">
-        <Exec WorkingDirectory="$(ProjectDir)\ApiClient"
-              EnvironmentVariables="ASPNETCORE_ENVIRONMENT=Development"
-              Command="$(NSwagExe_Net60) run nswag.json /variables:Configuration=$(Configuration)" />
+        <Exec WorkingDirectory="$(ProjectDir)\ApiClient" EnvironmentVariables="ASPNETCORE_ENVIRONMENT=Development" Command="$(NSwagExe_Net60) run nswag.json /variables:Configuration=$(Configuration)" />
     </Target>
 
 </Project>
