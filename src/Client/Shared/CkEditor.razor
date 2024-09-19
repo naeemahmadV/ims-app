@@ -1,0 +1,42 @@
+﻿@page "/ckeditor"
+@inject IJSRuntime JSRuntime
+<style>
+    .ck.ck-editor {
+        width: 100% !important;
+    }
+</style>
+
+
+<div style="width:100%;" id="@EditorId"></div>
+
+@code {
+    [Parameter]
+    public string ? EditorId { get; set; }
+    [Parameter]
+    public string InitialContent { get; set; } = "";
+    [Parameter]
+    public EventCallback<string> ContentChanged { get; set; }
+
+    private bool isScriptLoaded = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("loadCdnScript", "https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js", EditorId, InitialContent);
+        }
+
+    }
+
+    public async Task<string> GetData(string editorId)
+    {
+        var editorData = await JSRuntime.InvokeAsync<string>("getCKEditorData", editorId);
+        return editorData;
+    }
+
+    public async Task<bool> ResetData(string editorId)
+    {
+        var editorData = await JSRuntime.InvokeAsync<string>("resetCKEditor", editorId);
+        return true;
+    }
+}

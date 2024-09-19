@@ -1,0 +1,375 @@
+﻿@page "/catalog/opportunity"
+@using FSH.BlazorWebAssembly.Client.Components.Dialogs;
+
+@inject IOpportunityClient OpportunityClient
+@inject NavigationManager _navigation
+@inject ISnackbar snackbar
+@inject IUsersClient UsersClient
+
+<style>
+    .td_click {
+        text-decoration: underline;
+        color: #0f0fca !important;
+    }
+
+        .td_click:hover {
+            cursor: pointer;
+            text-decoration: underline;
+            color: #0f0fca !important;
+        }
+
+    .mud-table-toolbar {
+        flex-wrap: wrap;
+        margin-bottom: 35px !important;
+    }
+</style>
+<FshTitle Title="Opportunity" Description="Manage opportunity" />
+<MudTable Hover="true" Elevation="2" Items="_OpportunityList" Filter="new Func<OpportunityDto, bool>(Search)" @bind-user="_project">
+    <ToolBarContent>
+        <MudSpacer />
+
+       @*  <MudItem xs="12" md="2">
+            <MudButton DisableElevation Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" @onclick="CreateLead">Create</MudButton>
+         </MudItem> *@
+         <MudItem xs="12" md="3">
+             <MudSelect Class="mr-2" T="int" Placeholder="Select Year" @bind-Value="currentYear" SelectedValuesChanged="YearChangeEvent" AnchorOrigin="Origin.BottomCenter">
+                 <MudSelectItem Value="0">Select Year</MudSelectItem>
+                @if (_OpportunityYears is not null && _OpportunityYears.Count() > 0)
+                {
+                    foreach (var item in _OpportunityYears)
+                    {
+                        <MudSelectItem Value="@(item.Year)">@(item.Year + " (" + item.Count + ")")</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect Class="mr-2" T="int" Placeholder="Select Month" @bind-Value="currentMonth" SelectedValuesChanged="MonthChangeEvent" AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem Value="0">Select Month</MudSelectItem>
+                @if (_OpportunityMonths is not null && _OpportunityMonths.Count() > 0)
+                {
+                    foreach (Months month in Enum.GetValues(typeof(Months)))
+                    {
+                        <MudSelectItem Value="@((int)month)">@(month + " (" + GetOpportunityByMonth((int)month) + ")")</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect Class="mr-2" T="int" Placeholder="Select Day" @bind-Value="currentDay" AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem Value="0">Select Day</MudSelectItem>
+                @if (_OpportunityDays is not null && _OpportunityDays.Count() > 0)
+                {
+                    foreach (var day in Days)
+                    {
+                        <MudSelectItem Value="@(day)">@(day + " (" + GetOpportunityByDay(day) + ")")</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="3">
+        </MudItem>
+        <MudItem Class="mb-3" xs="12" md="3">
+            <MudTextField Class="mr-2" @bind-Value="name" Label="Search by Name" Variant="Variant.Text"></MudTextField>
+        </MudItem>
+        <MudItem Class="mb-3" xs="12" md="3">
+            <MudSelect Class="mr-2" T="bool" @bind-Value="createdOnOrder" Placeholder="Order By Created On" AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem Value="false">Created On Desc</MudSelectItem>
+                <MudSelectItem Value="true">Created On Asc</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem Class="mb-3" xs="12" md="3">
+            <MudButton Class="mr-3" StartIcon="@Icons.Material.Filled.Search" Variant="Variant.Filled" Color="Color.Primary" OnClick="SearchOpportunity">Search</MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Clear" Variant="Variant.Filled" Color="Color.Secondary" OnClick="Clear">Clear</MudButton>
+        </MudItem>
+    </ToolBarContent>
+
+    <HeaderContent>
+        <MudTh><MudTableSortLabel SortBy="new Func<OpportunityDto, object>(x => x.FirstName)">Name</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<OpportunityDto, object>(x => x.Topic)">Topic</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<OpportunityDto, object>(x => x.OpportunitySkills)">Skill</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<OpportunityDto, object>(x => x.OpportunitySubSkills)">Sub Skill</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<OpportunityDto, object>(x => x.OpportunityStatus)">Status</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<OpportunityDto, object>(x => x.CreatedOn)">Created On</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<OpportunityDto, object>(x => x.CreatedBy)">Owner</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<OpportunityDto, object>(x => x.TimeZone)">TimeZone</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<OpportunityDto, object>(x => x.Rating)">Rating</MudTableSortLabel></MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+
+        <MudTd Class="td_click" @onclick="(()=>EditOpprtunity(context.Id))" DataLabel="Name">
+            <MudHighlighter Text="@(context.FirstName+" "+context?.LastName)" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@context.Topic" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@(string.Join(',',context.OpportunitySkills.Select(x=>x.Skill?.Name).ToArray()))" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@(string.Join(',',context.OpportunitySubSkills.Select(x=>x.SubSkill?.SubSkillName).ToArray()))" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@(Enum.GetName(typeof(OpportunityStatus), Convert.ToInt32(context.OpportunityStatus)))" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@(context.CreatedOn.ToString("dd MMM yyyy hh:mm tt"))" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@(GetAuthor(context.CreatedBy))" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@(GetTimeZone(context.TimeZone))" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@(context.Rating.ToString())" HighlightedText="@_searchString" />
+        </MudTd>
+    </RowTemplate>
+
+    <PagerContent>
+        @if (paginationResponseOfOpportunityDto.TotalCount != 0)
+        {
+            <MudPagination SelectedChanged="PageChanged" Count="@((paginationResponseOfOpportunityDto.TotalCount + paginationResponseOfOpportunityDto.PageSize - 1) / paginationResponseOfOpportunityDto.PageSize)" Class="pa-4" />
+        }
+    </PagerContent>
+
+</MudTable>
+@code {
+    [CascadingParameter]
+    protected Task<AuthenticationState> AuthState { get; set; } = default!;
+    [Inject]
+    protected IAuthorizationService AuthService { get; set; } = default!;
+
+    List<OpportunityDto> _OpportunityList = new();
+    List<OpportunityYearDto> _OpportunityYears = new();
+    List<OpportunityMonthDto> _OpportunityMonths = new();
+    List<OpportunityDayDto> _OpportunityDays = new();
+    List<int> Days = new();
+    int currentYear;
+    int currentMonth;
+    int currentDay;
+    bool createdOnOrder;
+    string name;
+    
+    string userRole;
+    Guid userId;
+    private string? _userId;
+    OpportunityDto _project = new OpportunityDto();
+    private string _searchString = "";
+    PaginationResponseOfOpportunityDto paginationResponseOfOpportunityDto = new();
+    List<UserDetailsDto> _userList = new();
+    private bool _canSearchRoles;
+    protected override async Task OnInitializedAsync()
+
+
+    {
+        var state = await AuthState;
+        _canSearchRoles = await AuthService.HasPermissionAsync(state.User, FSHAction.View, FSHResource.UserRoles);
+        if ((await AuthState).User is { } user)
+        {
+            _userId = user.GetUserId();
+
+            Guid res = new Guid(_userId);
+            userId = res;
+            // var result = await UsersClient.GetRolesAsync(_userId);
+            //   userRole = result.Where(x => x.Enabled == true).Select(x => x.RoleName).FirstOrDefault();
+        }
+
+        await GetOpportunityYears();
+        await GetList();
+    }
+
+    private async Task GetList(int pageNumber = 1, int PageSize = 25, int? year = null, int? month = null, int? day = null, bool createdOnOrder = false)
+    {
+        string[] fields = new string[] { "firstname", "lastname" };
+        var search = new Search()
+            {
+                Fields = fields,
+                Keyword = name
+            };
+
+        paginationResponseOfOpportunityDto = await OpportunityClient.SearchAsync(new SearchOpportunityRequest()
+            {
+                PageNumber = pageNumber,
+                PageSize = PageSize,
+                Year = year,
+                Month = month,
+                Day = day,
+                CreatedOnOrder = createdOnOrder,
+                OpportunityWon= true,
+                AdvancedSearch = search,
+                UserId = userId,
+                UserRole = userRole
+            });
+
+        _OpportunityList = paginationResponseOfOpportunityDto.Data.ToList();
+
+        if (_OpportunityList.Count() > 0)
+        {
+            var usersIds = _OpportunityList.Select(x => x.CreatedBy.ToString()).Distinct().ToArray();
+            _userList = (await UsersClient.GetListByIdsAsync(usersIds)).ToList();
+        }
+
+    }
+
+    private async Task PageChanged(int pageNo)
+    {
+        await GetList(pageNo);
+    }
+
+    private async Task SearchOpportunity()
+    {
+        await GetList(1, 25, currentYear, currentMonth, currentDay, createdOnOrder);
+    }
+
+    private bool Search(OpportunityDto client)
+    {
+        if (string.IsNullOrWhiteSpace(_searchString)) return true;
+        if (client.Id.ToString().Contains(_searchString, StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return true;
+        }
+        if (client?.FirstName?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    // private void CreateOpportunity()
+    // {
+    //     _navigation.NavigateTo("/catalog/addlead");
+    // }
+
+    private void EditOpprtunity(Guid Id)
+    {
+        _navigation.NavigateTo("/catalog/OpportunityDetails/" + Id);
+    }
+
+    private async Task DeleteOpportunity(Guid Id)
+    {
+        string deleteContent = "You're sure you want to delete Opportunity!";
+
+        var parameters = new DialogParameters
+        {
+            { nameof(DeleteConfirmation.ContentText), deleteContent }
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true, DisableBackdropClick = true };
+        var dialog = DialogService.Show<DeleteConfirmation>("Delete", parameters, options);
+        var result = await dialog.Result;
+        if (!result.Cancelled)
+        {
+            await OpportunityClient.DeleteAsync(Id);
+            snackbar.Add("Deleted Successfully.", Severity.Success);
+        }
+
+    }
+
+    private System.Collections.ObjectModel.ReadOnlyCollection<TimeZoneInfo> timeZones = TimeZoneInfo.GetSystemTimeZones();
+    private string GetTimeZone(string Id)
+    {
+        try
+        {
+            var timezone = timeZones.Where(x => x.Id == Id).First();
+            if (timezone is null)
+                return "";
+            else
+                return timezone.DisplayName;
+        }
+        catch (Exception)
+        {
+
+        }
+        return "";
+    }
+
+    private string GetAuthor(Guid Id)
+    {
+        var user = _userList.FirstOrDefault(x => x.Id == Id);
+
+        return user?.FirstName + " " + user?.LastName ?? "";
+
+    }
+
+    private async void Clear()
+    {
+        currentYear = 0;
+        currentMonth = 0;
+        currentDay = 0;
+        name = string.Empty;
+        createdOnOrder = false;
+        await GetOpportunityYears();
+        await GetList();
+        StateHasChanged();
+    }
+
+    private async void YearChangeEvent(IEnumerable<int> years)
+    {
+        await GetOpportunityMonths(currentYear);
+    }
+
+    private async void MonthChangeEvent(IEnumerable<int> months)
+    {
+        await GetOpportunityDays(currentYear, currentMonth);
+        GetMonthDates(currentMonth);
+    }
+
+    private async Task GetOpportunityYears()
+    {
+        _OpportunityYears = (await OpportunityClient.GetOpportunityYearsAsync()).ToList();
+
+        if (_OpportunityYears is not null && _OpportunityYears.Count() > 0)
+        {
+            currentYear = _OpportunityYears[0].Year;
+            await GetOpportunityMonths(_OpportunityYears[0].Year);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task GetOpportunityMonths(int year)
+    {
+        _OpportunityMonths = (await OpportunityClient.GetOpportunityCountMonthWiseAsync(year)).ToList();
+    }
+
+    private async Task GetOpportunityDays(int year, int month)
+    {
+        _OpportunityDays = (await OpportunityClient.GetOpportunityCountDayWiseAsync(year, month)).ToList();
+    }
+
+    private int? GetOpportunityByMonth(int month)
+    {
+        if (_OpportunityMonths is not null && _OpportunityMonths.Count > 0)
+        {
+            var opportunities = _OpportunityMonths.Where(x => x.Month == month).FirstOrDefault();
+            if (opportunities is not null)
+                return opportunities.Count;
+        }
+        return 0;
+    }
+
+    private int? GetOpportunityByDay(int day)
+    {
+        if (_OpportunityDays is not null && _OpportunityDays.Count > 0)
+        {
+            var opportunities = _OpportunityDays.Where(x => x.Day == day).FirstOrDefault();
+            if (opportunities is not null)
+                return opportunities.Count;
+        }
+        return 0;
+    }
+
+    private void GetMonthDates(int month)
+    {
+        Days = new();
+        DateTime firstDayOfMonth = new DateTime(currentYear, month, 1);
+        DateTime lastDayOfMonth = new DateTime(currentYear, month, DateTime.DaysInMonth(currentYear, month));
+
+        for (DateTime date = firstDayOfMonth; date <= lastDayOfMonth; date = date.AddDays(1))
+        {
+            Days.Add(date.Day);
+        }
+    }
+}

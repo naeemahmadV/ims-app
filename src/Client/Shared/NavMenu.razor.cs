@@ -20,8 +20,13 @@ public partial class NavMenu
     private bool _canViewRoles;
     private bool _canViewUsers;
     private bool _canViewProducts;
+    private bool _canViewSubSkills;
     private bool _canViewBrands;
+    private bool _canViewSkills;
     private bool _canViewTenants;
+    private bool _canViewCompany;
+    private bool _canViewLead;
+    private bool _canViewUserTask;
     private bool CanViewAdministrationGroup => _canViewUsers || _canViewRoles || _canViewTenants;
 
     protected override async Task OnParametersSetAsync()
@@ -34,6 +39,11 @@ public partial class NavMenu
         _canViewUsers = await AuthService.HasPermissionAsync(user, FSHAction.View, FSHResource.Users);
         _canViewProducts = await AuthService.HasPermissionAsync(user, FSHAction.View, FSHResource.Products);
         _canViewBrands = await AuthService.HasPermissionAsync(user, FSHAction.View, FSHResource.Brands);
+        _canViewSkills = await AuthService.HasPermissionAsync(user, FSHAction.View, FSHResource.Skill);
         _canViewTenants = await AuthService.HasPermissionAsync(user, FSHAction.View, FSHResource.Tenants);
+        _canViewCompany = await AuthService.HasPermissionAsync(user, FSHAction.View, FSHResource.Company);
+        _canViewSubSkills = await AuthService.HasPermissionAsync(user, FSHAction.View, FSHResource.SubSkill);
+        _canViewLead = await AuthService.HasPermissionAsync(user, FSHAction.View, FSHResource.Lead);
+        //_canViewUserTask = await AuthService.HasPermissionAsync(user, FSHAction.View, FSHResource.Us);
     }
 }

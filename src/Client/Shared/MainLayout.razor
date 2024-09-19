@@ -7,21 +7,12 @@
     </MudTooltip>
     <MudSpacer />
     <MudHidden Breakpoint="Breakpoint.MdAndUp" Invert="true">
-            
-        <MudTooltip Text="Support">
-            <MudMenu Icon="@Icons.Filled.SupportAgent" Color="Color.Inherit" Dense="true" Direction="Direction.Right"
-                     OffsetY="true">
-            </MudMenu>
-        </MudTooltip>
-        @* <LanguageSelector /> *@
+        <LanguageSelector />
         <NotificationConnectionStatus></NotificationConnectionStatus>
+        <MudDivider Vertical="true" FlexItem="true" DividerType="DividerType.Middle" Class="mx-4 my-5" />
     </MudHidden>
     <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
-        <MudTooltip Text="Support">
-            <MudMenu Icon="@Icons.Filled.SupportAgent" Color="Color.Inherit" Dense="true" Direction="Direction.Right"
-                     OffsetY="true">
-            </MudMenu>
-        </MudTooltip>
+        <LanguageSelector />
         <NotificationConnectionStatus></NotificationConnectionStatus>
     </MudHidden>
     <MudMenu AnchorOrigin="Origin.BottomRight" LockScroll="true" TransformOrigin="Origin.TopRight">
@@ -35,6 +26,12 @@
                     <div class="d-flex">
                         <MudIcon Class="mx-2" Icon="@Icons.Material.Filled.Person" />
                         <MudText>@L["Account"]</MudText>
+                    </div>
+                </MudMenuItem>
+                <MudMenuItem Link="/dashboard">
+                    <div class="d-flex">
+                        <MudIcon Class="mx-2" Icon="@Icons.Material.Filled.Dashboard" />
+                        <MudText>@L["Dashboard"]</MudText>
                     </div>
                 </MudMenuItem>
                 <div class="mt-4 mx-4">

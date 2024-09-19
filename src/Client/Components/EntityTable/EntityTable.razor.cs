@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
 using MudBlazor;
 
+
 namespace FSH.BlazorWebAssembly.Client.Components.EntityTable;
 
 public partial class EntityTable<TEntity, TId, TRequest>

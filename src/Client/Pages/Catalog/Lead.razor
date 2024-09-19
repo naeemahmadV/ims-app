@@ -1,0 +1,243 @@
+﻿@page "/catalog/lead2"
+@attribute [MustHavePermission(FSHAction.View, FSHResource.Lead)]
+
+@inject IStringLocalizer<Lead> L
+@inject ILeadsClient LeadsClient
+@inject ICountryClient CountryClient
+@inject IStateClient StateClient
+@inject ICityClient CityClient
+@inject ILeadSourceClient LeadSourceClient
+@inject ISkillClient SkillsClient
+@inject ISubSkillClient SubSkillsClient
+
+<FshTitle Title="@L["Lead"]" Description="@L["Manage Leads."]" />
+
+<EntityTable @ref="_table" TEntity="LeadDto" TId="Guid" TRequest="UpdateLeadRequest" Context="@Context">
+   @*  <EditFormContent>
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" For="@(() => context.FirstName)" @bind-Value="context.FirstName" Label="@L["First Name"]" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" For="@(() => context.LastName)" @bind-Value="context.LastName" Label="@L["Last Name"]" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" For="@(() => context.Email)" @bind-Value="context.Email" Label="@L["Email"]" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" For="@(() => context.BusinessPhone)" @bind-Value="context.BusinessPhone" Label="@L["Business Phone"]" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" For="@(() => context.MobilePhone)" @bind-Value="context.MobilePhone" Label="@L["Mobile Phone"]" />
+        </MudItem>
+        <MudItem xs="12" md="12">
+            <MudTextField T="string" Lines="3" For="@(() => context.JobDescription)" @bind-Value="context.JobDescription" Label="@L["Job Description"]" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudSelect T="Guid?" Placeholder="Select Country" For="@(() => context.CountryId)" @bind-Value="context.CountryId" Label="@L["Country"]" AnchorOrigin="Origin.BottomCenter">
+                @if (countries is not null)
+                {
+                    foreach (var item in countries.Data)
+                    {
+                        <MudSelectItem Value="@(item.Id)">@item.Name</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudSelect T="Guid?" Placeholder="Select State" For="@(() => context.StateId)" @bind-Value="context.StateId" Label="@L["State"]" AnchorOrigin="Origin.BottomCenter">
+                @if (states is not null)
+                {
+                    foreach (var item in states.Data)
+                    {
+                        <MudSelectItem Value="@(item.Id)">@item.Name</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudSelect T="Guid?" Placeholder="Select City" For="@(() => context.CityId)" @bind-Value="context.CityId" Label="@L["City"]" AnchorOrigin="Origin.BottomCenter">
+                @if (cities is not null)
+                {
+                    foreach (var item in cities.Data)
+                    {
+                        <MudSelectItem Value="@(item.Id)">@item.Name</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" For="@(() => context.TimeZone)" @bind-Value="context.TimeZone" Label="@L["TimeZone"]" />
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudSelect T="Guid?" Placeholder="Select LeadSource" For="@(() => context.LeadSourceId)" @bind-Value="context.LeadSourceId" Label="@L["Lead Source"]" AnchorOrigin="Origin.BottomCenter">
+                @if (LeadSources is not null)
+                {
+                    foreach (var item in LeadSources.Data)
+                    {
+                        <MudSelectItem Value="@(item.Id)">@item.Name</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudElement HtmlTag="span">
+                Free Trial Offered
+            </MudElement>
+            <MudRadioGroup T="bool" For="@(() => context.FreeTrialOffered)" @bind-SelectedOption="context.FreeTrialOffered">
+                <MudRadio Option="true" Color="Color.Primary" Dense="true">Yes</MudRadio>
+                <MudRadio Option="false" Color="Color.Secondary" Dense="false">No</MudRadio>
+            </MudRadioGroup>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" For="@(() => context.PrefferedShift)" @bind-Value="context.PrefferedShift" Label="@L["Preffered Shift"]" />
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudTextField T="int" For="@(() => context.NumberOfResources)" @bind-Value="context.NumberOfResources" Label="@L["Number Of Resources"]" />
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudDatePicker For="@(() => context.ExpectedStartDate)" @bind-Date="context.ExpectedStartDate" Label="@L["Expected Start Date"]" />
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" For="@(() => context.DomainORIndustry)" @bind-Value="context.DomainORIndustry" Label="@L["Domain OR Industry"]" />
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+           
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+          
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudTextField T="int" For="@(() => context.Budget)" @bind-Value="context.Budget" Label="@L["Budget"]" />
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudElement Style="display:flex" HtmlTag="span">
+                Rating
+            </MudElement>
+            <MudRating T="int" For="@(() => context.Rating)" @bind-SelectedValue="context.Rating" Label="@L["Rating"]" />
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" For="@(() => context.LeadType)" @bind-Value="context.LeadType" Label="@L["Lead Type"]" />
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudElement HtmlTag="span">
+                NDAShared
+            </MudElement>
+            <MudRadioGroup T="bool" For="@(() => context.NDAShared)" @bind-SelectedOption="context.NDAShared">
+                <MudRadio Option="true" Color="Color.Primary" Dense="true">Yes</MudRadio>
+                <MudRadio Option="false" Color="Color.Secondary" Dense="false">No</MudRadio>
+            </MudRadioGroup>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudDatePicker For="@(() => context.NDASharedOn)" @bind-Date="context.NDASharedOn" Label="@L["NDA Shared On"]" />
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" For="@(() => context.TechnicalCoordinatorStatus)" @bind-Value="context.TechnicalCoordinatorStatus" Label="@L["Technical Coordinator Status"]" />
+        </MudItem>
+
+    </EditFormContent> *@
+
+</EntityTable>
+
+@code {
+
+    protected EntityServerTableContext<LeadDto, Guid, UpdateLeadRequest> Context { get; set; } = default!;
+
+
+    private EntityTable<LeadDto, Guid, UpdateLeadRequest> _table = default!;
+
+    private PaginationResponseOfCountryDto countries = new();
+    private PaginationResponseOfStateDto states = new();
+    private PaginationResponseOfCityDto cities = new();
+    private PaginationResponseOfLeadSourceDto LeadSources = new();
+    private PaginationResponseOfSkillDto Skills = new();
+    private PaginationResponseOfSubSkillDto SubSkills = new();
+
+    private Guid value { get; set; }
+    private Guid[]? options { get; set; }
+    private Guid[] selectedSubSkills = Array.Empty<Guid>();
+
+    protected override async void OnInitialized()
+    {
+        // try
+        // {
+        //     var leads = await LeadsClient.SearchAsync(new SearchLeadsRequest());
+
+        // }
+        // catch (Exception ex)
+        // {
+
+        // }
+
+        Context = new(
+                entityName: L["Lead"],
+                entityNamePlural: L["Leads"],
+                entityResource: FSHResource.Lead,
+                fields: new()
+                                                    {
+                new(lead => lead.Id, L["Id"], "Id"),
+                new(lead => lead.FirstName, L["First Name"], "FirstName"),
+                new(lead => lead.LastName, L["Last Name"], "LastName"),
+                new(lead => lead.Email, L["Email"], "Email"),
+                new(lead => lead.NdaSharedOn, L["NDASharedOn"], "NDASharedOn"),
+                                                    },
+                enableAdvancedSearch: true,
+                idFunc: lead => lead.Id,
+
+                searchFunc: async filter => (await LeadsClient.SearchAsync(filter.Adapt<SearchLeadsRequest>())).Adapt<PaginationResponse<LeadDto>>(),
+
+                createFunc: async lead => await LeadsClient.CreateAsync(lead.Adapt<CreateLeadRequest>()),
+
+                updateFunc: async (id, lead) => await LeadsClient.UpdateAsync(id, lead),
+
+                deleteFunc: async id => await LeadsClient.DeleteAsync(id));
+
+        // SearchCountryRequest searchCountryRequest = new();
+        // searchCountryRequest.PageNumber = 1;
+        // searchCountryRequest.PageSize = 9999;
+        // countries = await CountryClient.SearchAsync(searchCountryRequest);
+
+        // SearchStateRequest searchStateRequest = new();
+        // searchStateRequest.PageNumber = 1;
+        // searchStateRequest.PageSize = 9999;
+        // states = await StateClient.SearchAsync(searchStateRequest);
+
+        // SearchCityRequest searchCityRequest = new();
+        // searchCityRequest.PageNumber = 1;
+        // searchCityRequest.PageSize = 9999;
+        // cities = await CityClient.SearchAsync(searchCityRequest);
+
+        // SearchLeadSourceRequest searchLeadSourceRequest = new();
+        // searchLeadSourceRequest.PageNumber = 1;
+        // searchLeadSourceRequest.PageSize = 9999;
+        // LeadSources = await LeadSourceClient.SearchAsync(searchLeadSourceRequest);
+
+        // SearchSkillRequest searchSkillRequest = new();
+        // searchSkillRequest.PageNumber = 1;
+        // searchSkillRequest.PageSize = 9999;
+        // Skills = await SkillsClient.SearchAsync(searchSkillRequest);
+
+        // SearchSubSkillsRequest searchSubSkillRequest = new();
+        // searchSubSkillRequest.PageNumber = 1;
+        // searchSubSkillRequest.PageSize = 9999;
+        // SubSkills = await SubSkillsClient.SearchAsync(searchSubSkillRequest);
+
+        
+    }
+}

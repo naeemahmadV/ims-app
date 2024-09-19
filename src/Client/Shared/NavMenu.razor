@@ -3,16 +3,29 @@
 <PersonCard
     Style="background-color: var(--mud-palette-drawer-background);color: var(--mud-palette-drawer-text); margin-bottom:0px!important" />
 <MudNavMenu>
-    <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="ml-4 my-3">@L["Management"]</MudText>
-
+    <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="ml-4 my-3">@L["Start"]</MudText>
     @if (_canViewDashboard)
     {
         <MudNavLink Href="/dashboard" Match="NavLinkMatch.All" Icon="@Icons.Filled.Dashboard">@L["Dashboard"]</MudNavLink>
     }
-   
-    @if (_canViewProducts || _canViewBrands)
-    {  
+    @if (_canViewHangfire)
+    {
+        <MudNavLink Href="@_hangfireUrl" Match="NavLinkMatch.All" Target="_blank" Icon="@Icons.Material.Filled.Work">@L["Hangfire"]</MudNavLink>
+    }
+
+    <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="ml-4 my-3">@L["Personal"]</MudText>    
+    <MudNavLink Href="/account" Icon="@Icons.Filled.ManageAccounts">@L["Account"]</MudNavLink>
+    <MudNavLink Href="/audit-logs" Icon="@Icons.Material.Filled.SecurityUpdateGood">@L["Logs"]</MudNavLink>
+    @if (_canViewProducts || _canViewBrands || _canViewCompany )
+    {
+        <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="ml-4 my-3">@L["Management"]</MudText>
         <MudNavGroup Title="@L["Catalog"]" Expanded Icon="@Icons.Filled.AddBox">
+            @if (_canViewCompany)
+            {
+                <MudNavLink Href="/catalog/company" Icon="@Icons.Filled.ShoppingBag" Class="fsh-nav-child">
+                    @L["Company"]
+                </MudNavLink>
+            }
             @if (_canViewProducts)
             {
                 <MudNavLink Href="/catalog/products" Icon="@Icons.Filled.ShoppingBag" Class="fsh-nav-child">
@@ -25,10 +38,50 @@
                     @L["Brands"]
                 </MudNavLink>
             }
+            @if (_canViewLead)
+            {
+                <MudNavLink Href="/catalog/lead" Icon="@Icons.Filled.ShoppingBag" Class="fsh-nav-child">
+                    @L["Lead"]
+                </MudNavLink>
+            }
+            @if (_canViewLead)
+            {
+                <MudNavLink Href="/catalog/opportunity" Icon="@Icons.Filled.ShoppingBag" Class="fsh-nav-child">
+                    @L["Opportunity"]
+                </MudNavLink>
+            }
+
+            @if (_canViewLead)
+            {
+                <MudNavLink Href="/catalog/accounts" Icon="@Icons.Filled.ShoppingBag" Class="fsh-nav-child">
+                    @L["Accounts"]
+                </MudNavLink>
+            }
+
+            @if (_canViewSkills)
+            {
+                <MudNavLink Href="/catalog/skill" Icon="@Icons.Filled.ShoppingBag" Class="fsh-nav-child">
+                    @L["Skill"]
+                </MudNavLink>
+            }
+            @if (_canViewSubSkills)
+            {
+                <MudNavLink Href="/catalog/subskill" Icon="@Icons.Filled.ShoppingBag" Class="fsh-nav-child">
+                    @L["SubSkill"]
+                </MudNavLink>
+            }
+           @* <MudNavLink Href="/catalog/userTask" Icon="@Icons.Filled.ShoppingBag" Class="fsh-nav-child">
+                @L["MyTask"]
+            </MudNavLink>*@
+
+            @if (_canViewUserTask)
+            {
+                <MudNavLink Href="/catalog/userTask" Icon="@Icons.Filled.ShoppingBag" Class="fsh-nav-child">
+                    @L["MyTask"]
+                </MudNavLink>
+            }
         </MudNavGroup>
     }
-
-
     @if (CanViewAdministrationGroup)
     {
         <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="ml-4 my-3">@L["Administration"]</MudText>
@@ -44,6 +97,31 @@
         {
             <MudNavLink Href="/tenants" Icon="@Icons.Filled.GroupWork" Disabled="!_canViewTenants">@L["Tenants"]</MudNavLink>
         }
-        <MudNavLink Href="/audit-logs" Icon="@Icons.Material.Filled.SecurityUpdateGood">@L["Logs"]</MudNavLink>
     }
+    <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="ml-4 my-3">@L["Tenant"]</MudText>
+   
+ <MudNavGroup Title="@L["Tenant"]" Expanded Icon="@Icons.Filled.AddBox">
+        <MudNavLink Href="/tenanthome" Icon="@Icons.Filled.ShoppingBag" Class="fsh-nav-child">
+            @L["Home"]
+
+        </MudNavLink>
+        <MudNavLink Href="/payments" Icon="@Icons.Filled.ShoppingBag" Class="fsh-nav-child">
+            @L["Payments"]
+        </MudNavLink>
+        <MudNavLink Href="/requests" Icon="@Icons.Filled.ShoppingBag" Class="fsh-nav-child">
+            @L["Requests"]
+        </MudNavLink>
+        <MudNavLink Href="/documents" Icon="@Icons.Filled.ShoppingBag" Class="fsh-nav-child">
+            @L["Documents"]
+        </MudNavLink>
+        
+        <MudNavLink Href="/community" Icon="@Icons.Filled.ShoppingBag" Class="fsh-nav-child">
+            @L["Community"]
+        </MudNavLink>
+        <MudNavLink Href="/Contacts" Icon="@Icons.Filled.ShoppingBag" Class="fsh-nav-child">
+            @L["Contacts"]
+        </MudNavLink>
+       
+ </MudNavGroup>
+   
 </MudNavMenu>

@@ -1,0 +1,74 @@
+﻿@page "/catalog/account2"
+@attribute [MustHavePermission(FSHAction.View, FSHResource.Account)]
+
+@inject IStringLocalizer<Account> A
+@inject IAccountsClient AccountsClient
+@inject ICountryClient CountryClient
+@inject IStateClient StateClient
+@inject ICityClient CityClient
+@inject IAccountSourceClient AccountSourceClient
+@inject ISkillsClient SkillsClient
+@inject ISubSkillsClient SubSkillsClient
+
+<FshTitle Title="@A["Account"]" Description="@A["Manage Account."]" />
+<EntityTable @ref="_table" TEntity="AccountDto" TId="Guid" TRequest="UpdateAccountRequest" Context="@Context">
+   
+
+</EntityTable>
+@code {
+    protected EntityServerTableContext<AccountDto, Guid, UpdateAccountRequest> Context { get; set; } = default!;
+
+
+    private EntityTable<AccountDto, Guid, UpdateAccountRequest> _table = default!;
+
+    private PaginationResponseOfCountryDto countries = new();
+    private PaginationResponseOfStateDto states = new();
+    private PaginationResponseOfCityDto cities = new();
+    private PaginationResponseOfAccountSourceDto AccountSources = new();
+    private PaginationResponseOfSkillDto Skills = new();
+    private PaginationResponseOfSubSkillDto SubSkills = new();
+
+    private Guid value { get; set; }
+    private Guid[]? options { get; set; }
+    private Guid[] selectedSubSkills = Array.Empty<Guid>();
+
+    protected override async void OnInitialized()
+    {
+        // try
+        // {
+        //     var leads = await LeadsClient.SearchAsync(new SearchLeadsRequest());
+
+        // }
+        // catch (Exception ex)
+        // {
+
+        // }
+
+        Context = new(
+                entityName: A["Account"],
+                entityNamePlural: A["Accounts"],
+                entityResource: FSHResource.Account,
+                fields: new()
+                                                        {
+                new(account => account.Id, A["Id"], "Id"),
+                new(account => account.FirstName, A["First Name"], "FirstName"),
+                new(account => account.LastName, A["Last Name"], "LastName"),
+                new(account => account.Email, A["Email"], "Email"),
+                new(account => account.NdaSharedOn, A["NDASharedOn"], "NDASharedOn"),
+                                                        },
+                enableAdvancedSearch: true,
+                idFunc: account => account.Id,
+
+                searchFunc: async filter => (await AccountsClient.SearchAsync(filter.Adapt<SearchAccountRequest>())).Adapt<PaginationResponse<AccountDto>>(),
+
+                createFunc: async account => await AccountsClient.CreateAsync(account.Adapt<CreateAccountRequest>()),
+
+                updateFunc: async (id, account) => await AccountsClient.UpdateAsync(id, account),
+
+                deleteFunc: async id => await AccountsClient.DeleteAsync(id));
+
+       
+
+
+    }
+}

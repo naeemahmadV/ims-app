@@ -1,0 +1,1409 @@
+﻿@page "/catalog/addlead"
+@page "/catalog/addlead/{Id:guid}";
+@using System.Collections.ObjectModel;
+@using FSH.BlazorWebAssembly.Client.Components.Dialogs;
+
+@attribute [MustHavePermission(FSHAction.View, FSHResource.Lead)]
+
+@inject ISnackbar snackbar;
+@inject IStringLocalizer<Lead> L
+@inject ILeadsClient LeadsClient
+@inject ILeadActivityClient LeadActivitiesClient
+@inject ICountryClient CountryClient
+@inject IStateClient StateClient
+@inject ICityClient CityClient
+@inject ILeadSourcesClient LeadSourceClient
+@inject ISkillsClient SkillsClient
+@inject ISubSkillsClient SubSkillsClient
+@inject IUsersClient UsersClient
+@inject IMediasClient MediaClient
+@inject NavigationManager _navigation
+@inject IJSRuntime JSRuntime
+
+
+<style type="text/css">
+    .add_panel {
+        height: 75vh;
+        overflow-y: auto;
+    }
+
+    .activity_panelList {
+        height: 56vh;
+        overflow-y: auto;
+    }
+</style>
+
+<MudTabs Elevation="25" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+    <MudTabPanel Text="Lead Details">
+        <EditForm Class="add_panel" Model="@_model" OnValidSubmit="SaveUpdateLead">
+            <MudCardContent>
+                <MudGrid Justify="Justify.FlexStart">
+                    <DataAnnotationsValidator />
+                    <MudItem xs="4">
+                        <MudCard Class="d-flex align-center justify-center mud-width-full ">
+                            <MudCardContent>
+                                <MudItem xs="12" Class="d-flex align-center justify-center pb-6 mud-width-full">
+                                    <MudText Typo="Typo.h6" Align="Align.Center" style="text-decoration: underline;" Class="mb-n4">Requirments Details</MudText>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-4" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Skill</MudText>
+                                    </MudItem>
+                                    <MudItem Class="mt-2" xs="6">
+                                        <SkillBuilder ExistSkills="ExistSkills" SelectedSkills="SelectedSkills">
+                                        </SkillBuilder>
+                                        <ValidationMessage style="color:red;" For="@(() => _model.SkillsIds)" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-4" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Sub Skill</MudText>
+                                    </MudItem>
+                                    <MudItem Class="mt-2" xs="6">
+                                        <SubSkillsBuilder ExistSubSkills="ExistSubSkills" SelectedSubSkills="SelectedSubSkills">
+                                        </SubSkillsBuilder>
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Job Description</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" Lines="6" For="@(() => _model.JobDescription)" @bind-Value="_model.JobDescription" />
+                                    </MudItem>
+                                </MudItem>
+
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Project/ Work Domain</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" For="@(() => _model.DomainORIndustry)" @bind-Value="_model.DomainORIndustry" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Country</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudAutocomplete T="CountryDto" SearchFunc="@SearchCountry" Placeholder="Select Country" @bind-Value="countryValue"
+                                                         ToStringFunc="@(e=> e==null?null : e.Name)" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Time Zone</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudSelect T="string" Placeholder="Select TimeZone" For="@(() => _model.TimeZone)" @bind-Value="_model.TimeZone" AnchorOrigin="Origin.BottomCenter">
+                                            @if (timeZones is not null)
+                                            {
+                                                foreach (var item in timeZones)
+                                                {
+                                                    <MudSelectItem Value="@(item.Id)">@item.DisplayName</MudSelectItem>
+                                                }
+                                            }
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudItem>
+                            </MudCardContent>
+                        </MudCard>
+                        <MudCard Class="d-flex align-center justify-center mud-width-full py-8">
+                            <MudCardContent>
+                                <MudItem xs="12" Class="d-flex align-center justify-center pb-6 mud-width-full">
+                                    <MudText Typo="Typo.h6" Align="Align.Center" style="text-decoration: underline;" Class="mb-n4">CONTACT METHOD</MudText>
+                                </MudItem>
+
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Preferred</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudSelect T="int?" For="@(() => _model.PreferredContactMethod)" @bind-Value="_model.PreferredContactMethod" AnchorOrigin="Origin.BottomCenter">
+                                            @foreach (PreferredContactMethod method in Enum.GetValues(typeof(PreferredContactMethod)))
+                                            {
+                                                <MudSelectItem T="int?" Value="@((int)method)">@method</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Email</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudSelect T="bool?" For="@(() => _model.DoNotEmail)" @bind-Value="_model.DoNotEmail" AnchorOrigin="Origin.BottomCenter">
+                                            <MudSelectItem T="bool?" Value="@(true)">Allow</MudSelectItem>
+                                            <MudSelectItem T="bool?" Value="@(false)">Disallow</MudSelectItem>
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Follow Email</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudSelect T="bool?" For="@(() => _model.FollowEmail)" @bind-Value="_model.FollowEmail" AnchorOrigin="Origin.BottomCenter">
+                                            <MudSelectItem T="bool?" Value="true">Allow</MudSelectItem>
+                                            <MudSelectItem T="bool?" Value="false">Disallow</MudSelectItem>
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Bulk Email</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudSelect T="bool?" For="@(() => _model.DoNotBulkEmail)" @bind-Value="_model.DoNotBulkEmail" AnchorOrigin="Origin.BottomCenter">
+                                            <MudSelectItem T="bool?" Value="true">Allow</MudSelectItem>
+                                            <MudSelectItem T="bool?" Value="false">Disallow</MudSelectItem>
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Phone</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudSelect T="bool?" For="@(() => _model.DoNotPhone)" @bind-Value="_model.DoNotPhone" AnchorOrigin="Origin.BottomCenter">
+                                            <MudSelectItem T="bool?" Value="true">Allow</MudSelectItem>
+                                            <MudSelectItem T="bool?" Value="false">Disallow</MudSelectItem>
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudItem>
+
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudCard Class="d-flex align-center justify-center mud-width-full ">
+                            <MudCardContent>
+                                <MudItem xs="12" Class="d-flex align-center justify-center pb-6 mud-width-full">
+                                    <MudText Typo="Typo.h6" Align="Align.Center" style="text-decoration: underline;" Class="mb-n4">Service Details</MudText>
+                                </MudItem>
+
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Lead Id</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" For="@(() => _model.Topic)" @bind-Value="_model.Topic" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Lead Type</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudSelect T="string" Placeholder="Select Lead Type" For="@(() => _model.LeadType)" @bind-Value="_model.LeadType" AnchorOrigin="Origin.BottomCenter">
+                                            @if (LeadType is not null && LeadType.Count() > 0)
+                                            {
+                                                foreach (var item in LeadType)
+                                                {
+                                                    <MudSelectItem Value="@(item.Id.ToString())">@item.Name</MudSelectItem>
+                                                }
+                                            }
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Lead Source</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudSelect T="Guid?" Placeholder="Select LeadSource" For="@(() => _model.LeadSourceId)" @bind-Value="_model.LeadSourceId" AnchorOrigin="Origin.BottomCenter">
+                                            @if (LeadSources.Data is not null)
+                                            {
+                                                foreach (var item in LeadSources.Data)
+                                                {
+                                                    <MudSelectItem Value="@(item.Id)">@item.Name</MudSelectItem>
+                                                }
+                                            }
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Lead Status</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudSelect T="string" Placeholder="Select LeadStatus" For="@(() => _model.LeadStatus)" @bind-Value="_model.LeadStatus" AnchorOrigin="Origin.BottomCenter">
+                                            @if (LeadStatus is not null && LeadStatus.Count() > 0)
+                                            {
+                                                foreach (var item in LeadStatus)
+                                                {
+                                                    <MudSelectItem Value="@(item.Id.ToString())">@item.Name</MudSelectItem>
+                                                }
+                                            }
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Free Trial Offered</MudText>
+                                    </MudItem>
+                                    <MudItem Class="mt-6" xs="6">
+                                        <MudRadioGroup T="bool" For="@(() => _model.FreeTrialOffered)" @bind-SelectedOption="_model.FreeTrialOffered">
+                                            <MudRadio Option="true" Color="Color.Primary" Dense="true">Yes</MudRadio>
+                                            <MudRadio Option="false" Color="Color.Secondary" Dense="false">No</MudRadio>
+                                        </MudRadioGroup>
+                                    </MudItem>
+                                </MudItem>
+
+
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Preferred Shift Timing</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudSelect T="string" Placeholder="Select Preferred Shift Timing" For="@(() => _model.PrefferedShift)" @bind-Value="_model.PrefferedShift" AnchorOrigin="Origin.BottomCenter">
+                                            @if (PreferredShiftTiming is not null && PreferredShiftTiming.Count() > 0)
+                                            {
+                                                foreach (var item in PreferredShiftTiming)
+                                                {
+                                                    <MudSelectItem Value="@(item.Id.ToString())">@item.Name</MudSelectItem>
+                                                }
+                                            }
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">No. of Resource Required</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="int" For="@(() => _model.NumberOfResources)" @bind-Value="_model.NumberOfResources" />
+                                    </MudItem>
+                                </MudItem>
+
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Expected Start Date</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudDatePicker For="@(() => _model.ExpectedStartDate)" @bind-Date="_model.ExpectedStartDate" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Budget</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="int" For="@(() => _model.Budget)" @bind-Value="_model.Budget" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Rating</MudText>
+                                    </MudItem>
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudRating T="int" For="@(() => _model.Rating)" @bind-SelectedValue="_model.Rating" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">NDA Shared</MudText>
+                                    </MudItem>
+                                    <MudItem Class="mt-6" xs="6">
+                                        <MudRadioGroup T="bool" For="@(() => _model.NdaShared)" @bind-SelectedOption="_model.NdaShared">
+                                            <MudRadio Option="true" Color="Color.Primary" Dense="true">Yes</MudRadio>
+                                            <MudRadio Option="false" Color="Color.Secondary" Dense="false">No</MudRadio>
+                                        </MudRadioGroup>
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">NDA Shared On</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudDatePicker For="@(() => _model.NdaSharedOn)" @bind-Date="_model.NdaSharedOn" />
+                                    </MudItem>
+                                </MudItem>
+
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Sales Coordinator</MudText>
+                                    </MudItem>
+                                    <MudItem Class="mt-8" xs="6">
+                                        <SalesCoordinatorBuilder ExistUsers="ExistSalesCoordinators" SelectedUsers="SelectedSalesCoordinators">
+                                        </SalesCoordinatorBuilder>
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Technical Coordinator</MudText>
+                                    </MudItem>
+                                    <MudItem Class="mt-8" xs="6">
+                                        <TechCoordinatorBuilder ExistUsers="ExistTechCoordinators" SelectedUsers="SelectedTechCoordinators">
+                                        </TechCoordinatorBuilder>
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Technical Coordinator Status</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" For="@(() => _model.TechnicalCoordinatorStatus)" @bind-Value="_model.TechnicalCoordinatorStatus" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Lead Media</MudText>
+                                    </MudItem>
+                                    <MudItem Class="mt-8" xs="6">
+                                        <div>
+
+                                            <MudButton HtmlTag="label" DisableElevation Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                                        StartIcon="@Icons.Filled.CloudUpload" for="fileInput">
+                                                 @L["Upload"]
+                                             </MudButton>
+                                             @if (fileNames.Count > 0)
+                                            {
+                                                <ul>
+                                                    @foreach (var fileName in fileNames)
+                                                    {
+                                                        <li>@fileName</li>
+                                                    }
+                                                </ul>
+                                            }
+                                            @if (fileNames.Count > 0)
+                                            {
+                                                <MudButton HtmlTag="label" DisableElevation Variant="Variant.Filled" Color="Color.Warning" Size="Size.Small" Target="_blank"
+                                                            StartIcon="@Icons.Filled.Clear" Style="margin-left: 5px;" OnClick="ClearImageInBytes">
+                                                     @L["Clear"]
+                                                 </MudButton>
+                                            }
+
+                                        </div>
+                                        <InputFile multiple id="fileInput" hidden OnChange="UploadFiles" />
+                                    </MudItem>
+                                </MudItem>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudCard Class="d-flex align-center justify-center mud-width-full ">
+                            <MudCardContent>
+                                <MudItem xs="12" Class="d-flex align-center justify-center pb-6 mud-width-full">
+                                    <MudText Typo="Typo.h6" Align="Align.Center" style="text-decoration: underline;" Class="mb-n4">CONTACT</MudText>
+                                </MudItem>
+
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">First Name</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" For="@(() => _model.FirstName)" @bind-Value="_model.FirstName" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Last Name</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" For="@(() => _model.LastName)" @bind-Value="_model.LastName" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Designation</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" For="@(() => _model.Designation)" @bind-Value="_model.Designation" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Business Phone</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" For="@(() => _model.BusinessPhone)" @bind-Value="_model.BusinessPhone" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Mobile Phone</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" For="@(() => _model.MobilePhone)" @bind-Value="_model.MobilePhone" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Email</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" For="@(() => _model.Email)" @bind-Value="_model.Email" />
+                                    </MudItem>
+                                </MudItem>
+                            </MudCardContent>
+                        </MudCard>
+                        <MudCard Class="d-flex align-center justify-center mud-width-full ">
+                            <MudCardContent>
+                                <MudItem xs="12" Class="d-flex align-center justify-center pb-6 mud-width-full">
+                                    <MudText Typo="Typo.h6" Align="Align.Center" style="text-decoration: underline;" Class="mb-n4">COMPANY</MudText>
+                                </MudItem>
+
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Company</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" For="@(() => _model.Company)" @bind-Value="_model.Company" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Website</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" For="@(() => _model.Website)" @bind-Value="_model.Website" />
+                                    </MudItem>
+                                </MudItem>
+
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Street 1</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" For="@(() => _model.CompanyAddress1)" @bind-Value="_model.CompanyAddress1" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Street 2</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" For="@(() => _model.CompanyAddress2)" @bind-Value="_model.CompanyAddress2" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">State</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudAutocomplete T="StateDto" SearchFunc="@SearchState" Placeholder="Select State" @bind-Value="stateValue"
+                                                         ToStringFunc="@(e=> e==null?null : e.Name)" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">City</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudAutocomplete T="CityDto" SearchFunc="@SearchCity" Placeholder="Select City" @bind-Value="cityValue"
+                                                         ToStringFunc="@(e=> e==null?null : e.Name)" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Zip/Postal Code</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" For="@(() => _model.CompanyPostalCode)" @bind-Value="_model.CompanyPostalCode" />
+                                    </MudItem>
+                                </MudItem>
+
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">Annual Revenue</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" For="@(() => _model.CompanyAnnualRevenue)" @bind-Value="_model.CompanyAnnualRevenue" />
+                                    </MudItem>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex pb-2 mud-width-full">
+                                    <MudItem Class="mt-8" xs="6">
+                                        <MudText Align="Align.Left" Class="mb-n4">No. Of Employees</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="int?" For="@(() => _model.CompanyNumberofEmployees)" @bind-Value="_model.CompanyNumberofEmployees" />
+                                    </MudItem>
+                                </MudItem>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                </MudGrid>
+
+            </MudCardContent>
+            <MudCardActions Class="pb-4 pl-4 mr-12">
+                @if(Id!=Guid.Empty)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="MarkAsQualifiedLead" ButtonType="ButtonType.Button" StartIcon="@Icons.Filled.Save" Class="ml-auto">
+                       Mark As Qualified
+                    </MudButton>
+                }
+               
+
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit" StartIcon="@Icons.Filled.Save" Class="ml-auto">
+                    @(Id == Guid.Empty ? "Save" : "Update")
+                </MudButton>
+            </MudCardActions>
+        </EditForm>
+    </MudTabPanel>
+    @if (Id != Guid.Empty)
+    {
+        <MudTabPanel Text="Activities" OnClick="GetAcitivities">
+            <MudGrid Justify="Justify.FlexStart">
+                <MudItem xs="12" Class="d-flex  mud-width-full">
+                    <MudTextField Placeholder="Search" @onkeyup="HandleActivitySearchKeyDown" T="string" For="@(() => Search)" @bind-Value="Search" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenDialog" ButtonType="ButtonType.Submit" StartIcon="@Icons.Filled.Save" Class="ml-auto">
+                        Add Activity
+                    </MudButton>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <div @ref="scrollContainer" id="activity_list" Class="activity_panelList" @onscroll="OnScroll">
+
+                        @if (_LeadActivityList is not null && _LeadActivityList.Count() > 0)
+                        {
+                            foreach (var activity in _LeadActivityList)
+                            {
+                                <MudCard Class="d-flex align-center justify-center mud-width-full ">
+                                    <MudCardContent Style="width:100%;">
+                                        <MudItem Style="min-height: 20px;" xs="12" Class="d-flex  mud-width-full">
+                                            <MudText Style="color:grey;" Align="Align.Left" Class="mb-n4">Modified On @activity.LastModifiedOn</MudText>
+                                        </MudItem>
+                                        <MudItem Style="min-height: 20px;" xs="12" Class="d-flex  mud-width-full">
+                                            <MudItem xs="10">
+                                                <MudText Align="Align.Left" Class="mb-n4"><b>modified by @(GetModifyBy(activity.LastModifiedBy))</b></MudText>
+                                            </MudItem>
+                                            <MudItem xs="2">
+                                                <MudIconButton Variant="Variant.Filled" Color="Color.Primary" OnClick="(()=>OpenActivityDialog(activity.Id))"  ButtonType="ButtonType.Submit" Icon="@Icons.Material.Filled.Task"></MudIconButton>
+                                                @* <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenActivityDialog(activity.Id) ButtonType="ButtonType.Submit" StartIcon="@Icons.Filled.Save" Class="ml-auto">
+                                                  
+                                                </MudButton>*@
+                                                <MudIconButton OnClick="(()=>EditLeadActivity(activity.Id))" Icon="@Icons.Material.Filled.Edit" aria-label="Edit"></MudIconButton>
+                                                <MudIconButton OnClick="(()=>DeleteActivity(activity.Id))" Icon="@Icons.Material.Filled.Delete" aria-label="Edit"></MudIconButton>
+
+                                            </MudItem>
+                                        </MudItem>
+                                        <MudItem Style="min-height: 20px;" xs="12" Class="d-flex  mud-width-full">
+                                            <MudText Align="Align.Left" Class="mb-n4">@activity.Title</MudText>
+                                        </MudItem>
+                                        <MudItem xs="12" Class="d-flex  mud-width-full">
+                                            <MudText Align="Align.Left" Class="mb-n4">@(new MarkupString(activity.Description)) </MudText>
+                                        </MudItem>
+                                    </MudCardContent>
+                                </MudCard>
+                            }
+                        }
+                    </div>
+                </MudItem>
+            </MudGrid>
+        </MudTabPanel>
+    }
+
+</MudTabs>
+
+
+
+
+
+@code {
+
+    private ElementReference scrollContainer;
+
+    bool isOpen;
+
+    List<LeadActivityDto> _LeadActivityList = new();
+
+    CkEditor ckDescription;
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    [Parameter]
+    public Guid ActivityId { get; set; }
+    public string Search { get; set; }
+
+    protected UpdateLeadRequest _model = new();
+
+    protected UpdateLeadActivityRequest _activityModel = new();
+
+    private CountryDto? countryValue;
+    private StateDto? stateValue;
+    private CityDto? cityValue;
+    private TimeZoneInfo? timeZoneValue;
+    private List<string>? selectedSkills;
+    private List<string>? ExistSkills;
+    private List<string>? selectedSubSkills;
+    private List<string>? ExistSubSkills;
+
+    private List<string>? selectedSalesCoordinators;
+    private List<string>? ExistSalesCoordinators;
+
+    private List<string>? selectedTechCoordinators;
+    private List<string>? ExistTechCoordinators;
+
+    private CreateMediaRequest createMediaRequest = new();
+
+    private List<Guid> Attachment = new();
+    private List<Guid> ActivityAttachment = new();
+
+    private EntityTable<LeadDto, Guid, UpdateLeadRequest> _table = default!;
+
+    private PaginationResponseOfCountryDto countries = new();
+    private PaginationResponseOfStateDto states = new();
+    private PaginationResponseOfCityDto cities = new();
+    private ReadOnlyCollection<TimeZoneInfo> timeZones;
+    private PaginationResponseOfLeadSourcesDto LeadSources = new();
+    private PaginationResponsesOfSkillDto Skills = new();
+    private PaginationResponseOfSubSkillDto SubSkills = new();
+    private List<LeadStatusDto> LeadStatus = new();
+    private List<PreferredShiftTimingDto> PreferredShiftTiming = new();
+    private List<LeadTypeDto> LeadType = new();
+
+    PaginationResponseOfLeadActivityDto paginationResponseOfLeadActivityDto = new();
+    List<UserDetailsDto> _userList = new();
+    int activityCurrentPage = 1;
+    int activityTotalPage;
+    bool isactivityLoading = false;
+
+    private void SelectedSkills(List<string> skills)
+    {
+        selectedSkills = skills;
+        if (skills.Count() > 0)
+        {
+            Guid[] skillIds = new Guid[] { Guid.NewGuid() };
+            _model.SkillsIds = skillIds;
+        }
+        else
+            _model.SkillsIds = null;
+
+        StateHasChanged();
+    }
+    private void SelectedSubSkills(List<string> subSkills)
+    {
+        selectedSubSkills = subSkills;
+        if (subSkills.Count() > 0)
+        {
+            Guid[] subSkillIds = new Guid[] { Guid.NewGuid() };
+            _model.SubSkillsIds = subSkillIds;
+        }
+        else
+            _model.SubSkillsIds = null;
+
+        StateHasChanged();
+    }
+
+
+    private void SelectedSalesCoordinators(List<string> salesCoordinators) =>
+        selectedSalesCoordinators = salesCoordinators;
+
+    private void SelectedTechCoordinators(List<string> techCoordinators) =>
+        selectedTechCoordinators = techCoordinators;
+
+    private async Task<IEnumerable<CountryDto>> SearchCountry(string value)
+    {
+        // if text is null or empty, show complete list
+        if (string.IsNullOrEmpty(value))
+            return countries.Data;
+
+        return countries.Data.Where(x => x.Name.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+    }
+
+    private async Task<IEnumerable<StateDto>> SearchState(string value)
+    {
+        // if text is null or empty, show complete list
+        if (string.IsNullOrEmpty(value))
+            return states.Data;
+
+        return states.Data.Where(x => x.Name.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+    }
+    private async Task<IEnumerable<CityDto>> SearchCity(string value)
+    {
+        // if text is null or empty, show complete list
+        if (string.IsNullOrEmpty(value))
+            return cities.Data;
+
+        return cities.Data.Where(x => x.Name.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+    }
+    private async Task<IEnumerable<TimeZoneInfo>> SearchTimeZone(string value)
+    {
+        // if text is null or empty, show complete list
+        if (string.IsNullOrEmpty(value))
+            return TimeZoneInfo.GetSystemTimeZones();
+
+        return TimeZoneInfo.GetSystemTimeZones().Where(x => x.DisplayName.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+    }
+
+    protected override async void OnInitialized()
+    {
+        await Task.WhenAll(GetCountries(),
+                           GetStates(),
+                           GetCities(),
+                           GetLeadSources(),
+                           GetSkills(),
+                           GetSubSkills(),
+                           GetTimeZones(),
+                           GetLeadStatus(),
+                           GetPreferredShiftTiming(),
+                           GetLeadType());
+
+        if (Id != Guid.Empty)
+            await EditLead();
+    }
+
+    bool isActivityLoaded = false;
+
+    private async Task GetAcitivities()
+    {
+        if (!isActivityLoaded)
+            await GetLeadActivityList(1);
+    }
+
+
+    private async void OpenDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            {
+                nameof(AddActivity.LeadId),
+                Id
+            },
+            {
+                 nameof(AddActivity.ActivityId),
+                 ActivityId
+            }
+        };
+
+        var options = new DialogOptions { CloseButton = true, CloseOnEscapeKey = true, DisableBackdropClick = true };
+        var dialog = DialogService.Show<AddActivity>("Activities", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Cancelled)
+        {
+            await GetLeadActivityList(1);
+        }
+    }
+
+    private async Task OnScroll()
+    {
+        try
+        {
+            var scrollTop = await JSRuntime.InvokeAsync<int>("getScrollTop", scrollContainer);
+            var clientHeight = await JSRuntime.InvokeAsync<int>("getClientHeight", scrollContainer);
+            var scrollHeight = await JSRuntime.InvokeAsync<int>("getScrollHeight", scrollContainer);
+
+            if (scrollTop + clientHeight >= scrollHeight - 50 && !isactivityLoading && activityCurrentPage < activityTotalPage)
+            {
+                activityCurrentPage++;
+                await GetLeadActivityList(activityCurrentPage);
+            }
+        }
+        catch (Exception ex)
+        {
+
+        }
+    }
+
+    private async Task GetCountries() =>
+            countries = await CountryClient.SearchAsync(new SearchCountryRequest());
+
+    private async Task GetStates() =>
+            states = await StateClient.SearchAsync(new SearchStateRequest());
+
+    private async Task GetCities() =>
+            cities = await CityClient.SearchAsync(new SearchCityRequest());
+
+    private async Task GetLeadSources() =>
+            LeadSources = await LeadSourceClient.SearchAsync(new SearchLeadSourceRequest());
+
+    private async Task GetSkills()=>
+            Skills = await SkillsClient.SearchAsync(new SearchSkillRequest());
+
+    private async Task GetSubSkills() =>
+            SubSkills = await SubSkillsClient.SearchAsync(new SearchSubSkillsRequest());
+
+    private async Task GetTimeZones() =>
+            timeZones = TimeZoneInfo.GetSystemTimeZones();
+
+    private async Task GetLeadStatus() =>
+            LeadStatus = await LeadsClient.LeadStatusAsync();
+
+    private async Task GetPreferredShiftTiming() =>
+            PreferredShiftTiming = await LeadsClient.PreferredShiftTimingAsync();
+
+    private async Task GetLeadType() =>
+            LeadType = await LeadsClient.LeadTypeAsync();
+
+    private async Task SaveUpdateLead()
+    {
+        if (Id == Guid.Empty)
+        {
+            var createLeadRequest = _model.Adapt<CreateLeadRequest>();
+            createLeadRequest.CountryId = countryValue?.Id;
+            createLeadRequest.StateId = stateValue?.Id;
+            createLeadRequest.CityId = cityValue?.Id;
+            //createLeadRequest.TimeZone = timeZoneValue.Id;
+
+            // var NotExistskills = Skills.Data.Where(x => !selectedSkills.Contains(x.Name));
+            bool isNewSkillinserted = false;
+            if (selectedSkills is not null)
+            {
+                foreach (var skill in selectedSkills)
+                {
+                    var isExist = Skills.Data.Where(x => x.Name == skill);
+
+                    if (isExist.Count() == 0)
+                    {
+                        isNewSkillinserted = true;
+                        try
+                        {
+                            await SkillsClient.CreateAsync(new CreateSkillRequest()
+                                {
+                                    Name = skill
+                                });
+
+                        }
+                        catch (Exception ex)
+                        {
+
+                        }
+                    }
+                }
+            }
+
+            bool isNewSubSkillinserted = false;
+
+            if (selectedSubSkills is not null)
+            {
+                foreach (var subskill in selectedSubSkills)
+                {
+                    var isExist = SubSkills.Data.Where(x => x.SubSkillName == subskill);
+
+                    if (isExist.Count() == 0)
+                    {
+                        isNewSkillinserted = true;
+
+                        try
+                        {
+                            await SubSkillsClient.CreateAsync(new CreateSubSkillRequest()
+                                {
+                                    SubSkillName = subskill
+                                });
+                        }
+                        catch (Exception ex)
+                        {
+
+                        }
+
+                    }
+                }
+            }
+
+            if (isNewSkillinserted)
+                await GetSkills();
+
+            if (isNewSubSkillinserted)
+                await GetSubSkills();
+
+            if (selectedSkills is not null)
+                createLeadRequest.SkillsIds = Skills.Data.Where(x => selectedSkills.Contains(x.Name)).Select(x => x.Id).ToArray();
+
+            if (selectedSubSkills is not null)
+                createLeadRequest.SubSkillsIds = SubSkills.Data.Where(x => selectedSubSkills.Contains(x.SubSkillName)).Select(x => x.Id).ToArray();
+
+            // var users = await UsersClient.GetListAsync();
+
+            var users = (await UsersClient.GetListAsync()).ToList();
+
+            if (selectedSalesCoordinators is not null)
+                createLeadRequest.SalesCoordinaotrs = users.Where(x => selectedSalesCoordinators.Contains(x.UserName)).Select(x => x.Id).ToArray();
+
+            if (selectedTechCoordinators is not null)
+                createLeadRequest.TechCoordinaotrs = users.Where(x => selectedTechCoordinators.Contains(x.UserName)).Select(x => x.Id).ToArray();
+
+            if (Attachment.Count() > 0)
+                createLeadRequest.LeadMedia = Attachment.ToArray();
+
+            await LeadsClient.CreateAsync(createLeadRequest);
+            snackbar.Add("Saved Successfully.", Severity.Success);
+        }
+        else
+        {
+            var updateLeadRequest = _model;
+            updateLeadRequest.CountryId = countryValue?.Id;
+            updateLeadRequest.StateId = stateValue?.Id;
+            updateLeadRequest.CityId = cityValue?.Id;
+            //updateLeadRequest.TimeZone = timeZoneValue?.Id;
+
+            bool isNewSkillinserted = false;
+
+            if (selectedSkills is not null)
+            {
+                foreach (var skill in selectedSkills)
+                {
+                    var isExist = Skills.Data.Where(x => x.Name == skill);
+
+                    if (isExist.Count() == 0)
+                    {
+                        isNewSkillinserted = true;
+                        try
+                        {
+                            await SkillsClient.CreateAsync(new CreateSkillRequest()
+                                {
+                                    Name = skill
+                                });
+
+                        }
+                        catch (Exception ex)
+                        {
+
+                        }
+                    }
+                }
+            }
+
+            bool isNewSubSkillinserted = false;
+
+            if (selectedSubSkills is not null)
+            {
+                foreach (var subskill in selectedSubSkills)
+                {
+                    var isExist = SubSkills.Data.Where(x => x.SubSkillName == subskill);
+
+                    if (isExist.Count() == 0)
+                    {
+                        isNewSubSkillinserted = true;
+
+                        try
+                        {
+                            await SubSkillsClient.CreateAsync(new CreateSubSkillRequest()
+                                {
+                                    SubSkillName = subskill
+                                });
+                        }
+                        catch (Exception ex)
+                        {
+
+                        }
+                    }
+                }
+            }
+            try
+            {
+                if (isNewSkillinserted)
+                    await GetSkills();
+
+                if (isNewSubSkillinserted)
+                    await GetSubSkills();
+
+                if (selectedSkills is not null)
+                    updateLeadRequest.SkillsIds = Skills.Data.Where(x => selectedSkills.Contains(x.Name)).Select(x => x.Id).ToArray();
+
+                if (selectedSubSkills is not null)
+                    updateLeadRequest.SubSkillsIds = SubSkills.Data.Where(x => selectedSubSkills.Contains(x.SubSkillName)).Select(x => x.Id).ToArray();
+
+                var users = (await UsersClient.GetListAsync()).ToList();
+
+                if (selectedSalesCoordinators is not null)
+                    // updateLeadRequest.SalesCoordinaotrs = users.Where(x => selectedSalesCoordinators.Contains(x.FirstName + " " + x?.LastName)).Select(x => x.Id).ToArray();
+                    updateLeadRequest.SalesCoordinaotrs = users.Where(x => selectedSalesCoordinators.Contains(x.UserName)).Select(x => x.Id).ToArray();
+                if (selectedTechCoordinators is not null)
+                    // updateLeadRequest.TechCoordinaotrs = users.Where(x => selectedTechCoordinators.Contains(x.FirstName + " " + x?.LastName)).Select(x => x.Id).ToArray();
+                    updateLeadRequest.TechCoordinaotrs = users.Where(x => selectedTechCoordinators.Contains(x.UserName)).Select(x => x.Id).ToArray();
+                if (Attachment.Count() > 0)
+                    updateLeadRequest.LeadMedia = Attachment.ToArray();
+
+                await LeadsClient.UpdateAsync(Id, updateLeadRequest);
+            }
+            catch (Exception ex)
+            {
+
+            }
+
+            snackbar.Add("Updated Successfully.", Severity.Success);
+        }
+
+        _navigation.NavigateTo("/catalog/lead");
+    }
+
+
+    private async Task MarkAsQualifiedLead()
+    {
+
+        var updateLeadRequest = _model;
+
+        updateLeadRequest.Id = Id;
+        updateLeadRequest.MarkAsQualified = true;
+        updateLeadRequest.QualifiedOn=DateTime.UtcNow;
+        //updateLeadRequest.QualifiedBy=
+
+        try
+        {
+
+
+            await LeadsClient.UpdateAsync(Id, updateLeadRequest);
+            OpenDialog();
+        }
+        catch (Exception ex)
+        {
+
+        }
+
+        // snackbar.Add("Marked As Qualify Successfully.", Severity.Success);
+
+
+        //_navigation.NavigateTo("/catalog/lead");
+    }
+
+    private async Task SaveUpdateLeadActivity()
+    {
+        if (ActivityId == Guid.Empty)
+        {
+            var createLeadActivityRequest = _activityModel.Adapt<CreateLeadActivityRequest>();
+            createLeadActivityRequest.LeadId = Id;
+            createLeadActivityRequest.Description = await ckDescription.GetData("editorDescription");
+            if (ActivityAttachment.Count() > 0)
+                createLeadActivityRequest.ActivityMedia = ActivityAttachment.ToArray();
+
+            await LeadActivitiesClient.CreateAsync(createLeadActivityRequest);
+            snackbar.Add("Saved Successfully.", Severity.Success);
+        }
+        else
+        {
+            var updateLeadActivityRequest = _activityModel;
+            updateLeadActivityRequest.LeadId = Id;
+            updateLeadActivityRequest.Description = await ckDescription.GetData("editorDescription");
+            if (ActivityAttachment.Count() > 0)
+                updateLeadActivityRequest.ActivityMedia = ActivityAttachment.ToArray();
+
+            await LeadActivitiesClient.UpdateAsync(ActivityId, updateLeadActivityRequest);
+            snackbar.Add("Updated Successfully.", Severity.Success);
+        }
+        isOpen = false;
+        ClearActivity();
+        await GetLeadActivityList(1);
+
+    }
+
+    private async void ClearActivity()
+    {
+        _activityModel = new();
+        ActivityAttachment = new();
+        activityFileNames = new();
+        ActivityId = Guid.Empty;
+        await ckDescription.ResetData("editorDescription");
+        StateHasChanged();
+    }
+
+    private async Task EditLead()
+    {
+
+        var result = await LeadsClient.GetAsync(Id);
+        _model = result.Adapt<UpdateLeadRequest>();
+
+        var users = await UsersClient.GetListAsync();
+
+        countryValue = countries.Data.Where(x => x.Id == _model.CountryId).FirstOrDefault();
+        stateValue = states.Data.Where(x => x.Id == _model.StateId).FirstOrDefault();
+        cityValue = cities.Data.Where(x => x.Id == _model.CityId).FirstOrDefault();
+        timeZoneValue = TimeZoneInfo.GetSystemTimeZones().Where(x => x.Id == _model.TimeZone).FirstOrDefault();
+        var skilids = result.LeadSkills?.Select(x => x.SkillId);
+
+        if (skilids is not null)
+        {
+            ExistSkills = Skills.Data.Where(x => skilids.Contains(x.Id)).Select(x => x.Name).ToList();
+            selectedSkills = ExistSkills;
+            _model.SkillsIds = skilids.ToArray();
+        }
+
+        var subskilids = result.LeadSubSkills?.Select(x => x.SubSkillId);
+
+        if (subskilids is not null)
+        {
+            ExistSubSkills = SubSkills.Data.Where(x => subskilids.Contains(x.Id)).Select(x => x.SubSkillName).ToList();
+            selectedSubSkills = ExistSubSkills;
+            _model.SubSkillsIds = subskilids.ToArray();
+        }
+
+        var salesCoordinatorsIds = result.SalesCoordinators?.Select(x => x.UserId);
+        if (salesCoordinatorsIds is not null)
+        {
+            ExistSalesCoordinators = users.Where(x => salesCoordinatorsIds.Contains(x.Id)).Select(x => x.FirstName + " " + x?.LastName).ToList();
+            selectedSalesCoordinators = ExistSalesCoordinators;
+        }
+        var techCoordinatorsIds = result.TechnicalCoordinators?.Select(x => x.UserId);
+        if (techCoordinatorsIds is not null)
+        {
+            ExistTechCoordinators = users.Where(x => techCoordinatorsIds.Contains(x.Id)).Select(x => x.FirstName + " " + x?.LastName).ToList();
+            selectedTechCoordinators = ExistTechCoordinators;
+        }
+
+        var attachments = result.LeadMedias?.Select(x => x.MediaId).ToList();
+
+        if (attachments is not null)
+            Attachment = attachments;
+
+        var fileNamesList = result.LeadMedias?.Select(x => x.Media?.MediaName).ToList();
+
+        if (fileNamesList is not null)
+            fileNames = fileNamesList;
+
+        StateHasChanged();
+    }
+
+    private List<string> activityFileNames = new List<string>();
+    private async Task UploadActivityFiles(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            foreach (var file in e.GetMultipleFiles())
+            {
+                // Process each file here
+                activityFileNames.Add(file.Name);
+
+                string? extension = Path.GetExtension(file.Name);
+                if (!ApplicationConstants.SupportedImageFormats.Contains(extension.ToLower()))
+                {
+                    Snackbar.Add("File Format Not Supported.", Severity.Error);
+                    return;
+                }
+
+                UploadRequest uploadRequest = new();
+                uploadRequest.FileName = file.Name;
+                uploadRequest.Extension = extension;
+                uploadRequest.UploadType = UploadType.Document;
+
+                var imageFile = await file.RequestImageFileAsync(ApplicationConstants.StandardImageFormat, ApplicationConstants.MaxImageWidth, ApplicationConstants.MaxImageHeight);
+                byte[]? buffer = new byte[imageFile.Size];
+                await imageFile.OpenReadStream(ApplicationConstants.MaxAllowedSize).ReadAsync(buffer);
+                uploadRequest.Data = $"data:{ApplicationConstants.StandardImageFormat};base64,{Convert.ToBase64String(buffer)}";
+
+                createMediaRequest.MediaGuid = Guid.NewGuid();
+                createMediaRequest.Active = true;
+                createMediaRequest.Deleted = false;
+                createMediaRequest.MediaName = file.Name;
+                createMediaRequest.Image = uploadRequest;
+                createMediaRequest.AltAttribute = "";
+                createMediaRequest.MimeType = "";
+                createMediaRequest.TitleAttribute = "";
+                createMediaRequest.PathURL = "";
+
+                var Id = await MediaClient.CreateAsync(createMediaRequest);
+
+                ActivityAttachment.Add(Id);
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+        }
+
+    }
+
+    public void ClearActivityImageInBytes()
+    {
+        activityFileNames = new List<string>();
+        ActivityAttachment = new List<Guid>();
+        StateHasChanged();
+    }
+
+    private List<string> fileNames = new List<string>();
+
+    private async Task UploadFiles(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            foreach (var file in e.GetMultipleFiles())
+            {
+                // Process each file here
+                fileNames.Add(file.Name);
+
+                string? extension = Path.GetExtension(file.Name);
+                if (!ApplicationConstants.SupportedImageFormats.Contains(extension.ToLower()))
+                {
+                    Snackbar.Add("File Format Not Supported.", Severity.Error);
+                    return;
+                }
+
+                UploadRequest uploadRequest = new();
+                uploadRequest.FileName = file.Name;
+                uploadRequest.Extension = extension;
+                uploadRequest.UploadType = UploadType.Document;
+
+                var imageFile = await file.RequestImageFileAsync(ApplicationConstants.StandardImageFormat, ApplicationConstants.MaxImageWidth, ApplicationConstants.MaxImageHeight);
+                byte[]? buffer = new byte[imageFile.Size];
+                await imageFile.OpenReadStream(ApplicationConstants.MaxAllowedSize).ReadAsync(buffer);
+                uploadRequest.Data = $"data:{ApplicationConstants.StandardImageFormat};base64,{Convert.ToBase64String(buffer)}";
+
+                createMediaRequest.MediaGuid = Guid.NewGuid();
+                createMediaRequest.Active = true;
+                createMediaRequest.Deleted = false;
+                createMediaRequest.MediaName = file.Name;
+                createMediaRequest.Image = uploadRequest;
+                createMediaRequest.AltAttribute = "";
+                createMediaRequest.MimeType = "";
+                createMediaRequest.TitleAttribute = "";
+                createMediaRequest.PathURL = "";
+
+                var Id = await MediaClient.CreateAsync(createMediaRequest);
+
+                Attachment.Add(Id);
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+        }
+
+    }
+
+    public void ClearImageInBytes()
+    {
+        fileNames = new List<string>();
+        Attachment = new List<Guid>();
+        StateHasChanged();
+    }
+
+
+
+    private async Task GetLeadActivityList(int pageIndex)
+    {
+        isactivityLoading = true;
+        string[] fields = new string[] { "title", "description" };
+
+        var search = new Search()
+            {
+                Fields = fields,
+                Keyword = Search
+            };
+
+        paginationResponseOfLeadActivityDto = await LeadActivitiesClient.SearchAsync(new SearchLeadAcitivityRequest()
+            {
+                LeadId = Id,
+                AdvancedSearch = search,
+                PageSize = 10,
+                PageNumber = pageIndex
+            });
+
+        var activityList = paginationResponseOfLeadActivityDto.Data;
+        activityTotalPage = paginationResponseOfLeadActivityDto.TotalPages;
+
+        if (pageIndex == 1)
+            _LeadActivityList = activityList.ToList();
+        else
+            _LeadActivityList.AddRange(activityList.ToList());
+
+        if (_LeadActivityList.Count() > 0)
+        {
+            var usersIds = _LeadActivityList.Select(x => x.LastModifiedBy.ToString()).Distinct().ToArray();
+            var userList = await UsersClient.GetListByIdsAsync(usersIds);
+
+            if (pageIndex == 1)
+                _userList = userList.ToList();
+            else
+                _userList.AddRange(userList.ToList());
+        }
+        isactivityLoading = false;
+        isActivityLoaded = true;
+        StateHasChanged();
+
+    }
+
+    private string GetModifyBy(Guid Id)
+    {
+        var user = _userList.FirstOrDefault(x => x.Id == Id);
+
+        if (user is not null)
+            return user.FirstName + " " + user?.LastName;
+
+        return "";
+
+    }
+
+    private async Task EditLeadActivity(Guid id)
+    {
+        ActivityId = id;
+        OpenDialog();
+    }
+
+    private async Task DeleteActivity(Guid Id)
+    {
+
+        string deleteContent = "You're sure you want to delete activity!";
+
+        var parameters = new DialogParameters
+        {
+            { nameof(DeleteConfirmation.ContentText), deleteContent }
+        };
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true, DisableBackdropClick = true };
+        var dialog = DialogService.Show<DeleteConfirmation>(L["Delete"], parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Cancelled)
+        {
+            await LeadActivitiesClient.DeleteAsync(Id);
+            await GetLeadActivityList(1);
+            snackbar.Add("Deleted Successfully.", Severity.Success);
+        }
+    }
+    private async Task MarkAsTask(Guid Id)
+    {
+
+        string deleteContent = "You're sure you want to mark as task this activity!";
+
+        var parameters = new DialogParameters
+        {
+            { nameof(DeleteConfirmation.ContentText), deleteContent }
+        };
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true, DisableBackdropClick = true };
+        var dialog = DialogService.Show<DeleteConfirmation>(L["Delete"], parameters, options);
+        var result = await dialog.Result;
+
+        var updateLeadActivityRequest = _activityModel;
+        updateLeadActivityRequest.Id = Id;
+        updateLeadActivityRequest.MarkAsTask = true;
+
+
+        if (!result.Cancelled)
+        {
+            await LeadActivitiesClient.UpdateAsync(Id, updateLeadActivityRequest);
+            await GetLeadActivityList(1);
+            snackbar.Add("Mark as a task  successfully.", Severity.Success);
+        }
+    }
+
+    private async Task HandleActivitySearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !isactivityLoading)
+        {
+            // Handle the Enter key press here
+            await GetLeadActivityList(1);
+        }
+    }
+    private async void OpenActivityDialog(Guid ActId)
+    {
+        var parameters = new DialogParameters
+        {
+             {
+                nameof(AddActivity.LeadId),
+                Id
+            },
+            {
+                 nameof(AddActivity.ActivityId),
+                 ActId
+            }
+           
+           
+        };
+
+        var options = new DialogOptions { CloseButton = true, CloseOnEscapeKey = true, DisableBackdropClick = true };
+        var dialog = DialogService.Show<AddTask>("Task",parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Cancelled)
+        {
+            await GetLeadActivityList(1);
+        }
+    }
+}

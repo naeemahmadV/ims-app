@@ -1,0 +1,42 @@
+﻿@page "/catalog/skill"
+@attribute [MustHavePermission(FSHAction.View, FSHResource.Skill)]
+@attribute [MustHavePermission(FSHAction.Search, FSHResource.Skill)]
+
+@inject IStringLocalizer<Skill> L
+@inject ISkillsClient SkillsClient
+
+<FshTitle Title="@L["Skill"]" Description="@L["Manage Skills."]" />
+
+<EntityTable TEntity="SkillDto" TId="Guid" TRequest="UpdateSkillRequest" Context="@Context">
+
+    <EditFormContent>
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" For="@(() => context.Name)" @bind-Value="context.Name" Label="@L["Name"]" />
+        </MudItem>
+    </EditFormContent>
+
+</EntityTable>
+
+@code {
+  
+    protected EntityServerTableContext<SkillDto, Guid, UpdateSkillRequest> Context { get; set; } = default!;
+
+    protected override void OnInitialized() =>
+        Context = new(
+            entityName: L["Skill"],
+            entityNamePlural: L["Skills"],
+            entityResource: FSHResource.Skill,
+            fields: new()
+                {
+                new(skill => skill.Id, L["Id"], "Id"),
+                new(skill => skill.Name, L["Name"], "Name"),
+                },
+            idFunc: skill => skill.Id,
+            searchFunc: async filter => (await SkillsClient
+                .SearchAsync(filter.Adapt<SearchSkillRequest>()))
+                .Adapt<PaginationResponse<SkillDto>>(),
+            createFunc: async skill => await SkillsClient.CreateAsync(skill.Adapt<CreateSkillRequest>()),
+            updateFunc: async (id, skill) => await SkillsClient.UpdateAsync(id, skill),
+            deleteFunc: async id => await SkillsClient.DeleteAsync(id),
+            exportAction: string.Empty);
+}

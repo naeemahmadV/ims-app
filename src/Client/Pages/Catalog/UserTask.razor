@@ -1,0 +1,189 @@
+﻿@page "/catalog/userTask"
+@*@attribute [MustHavePermission(FSHAction.View, FSHResource.UserTask)]*@
+
+<h3>My Task</h3>
+@inject IStringLocalizer<LeadActivityDto> L
+@inject ILeadActivityClient LeadActivitiesClient;
+@*<FshTitle Title="@L["Task"]" Description="@L["User Task."]" />*@
+
+
+<MudTable Items="_LeadActivityTaskList">
+    <HeaderContent>
+        <MudTh>Lead</MudTh>
+        <MudTh>Title</MudTh>                            
+        <MudTh> Start Date</MudTh>
+        <MudTh>Due Date</MudTh>
+        <MudTh>Task Completed On</MudTh>
+        <MudTh> Task Status</MudTh>
+        <MudTh> Action</MudTh>
+
+
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Lead">@(context.Lead.FirstName + " " + context.Lead.LastName)</MudTd>
+            <MudTd DataLabel="Description">@(new MarkupString(context.Title))</MudTd>
+            <MudTd DataLabel="TaskStartDate">@context.TaskStartDate.Value.ToString("dd MMM yyyy hh:mm tt")</MudTd>
+            <MudTd DataLabel="TaskDueDate">@context.TaskDueDate.Value.ToString("dd MMM yyyy hh:mm tt")</MudTd>
+       
+        <MudTd DataLabel="TaskCompletedOn">@context.TaskCompletedOn</MudTd>
+           @* <MudTd DataLabel="TaskCompletedOn">@(context.TaskCompletedOn.ToString("dd MMM yyyy hh:mm tt"))</MudTd>*@
+            <MudTd DataLabel="TaskStatus">  @(Enum.GetName(typeof(TasksStatus), Convert.ToInt32(context.TaskStatus)))</MudTd>
+            <MudTd>
+                <MudIconButton OnClick="(()=>EditLeadTaskActivity(context.Id))" Icon="@Icons.Material.Filled.Edit" aria-label="Edit"></MudIconButton>
+                <MudIconButton OnClick="(()=>DetailLeadTaskActivity(context.Id,context.LeadId))" Icon="@Icons.Material.Filled.Details" aria-label="Details"></MudIconButton>
+
+
+            </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        @if (paginationResponseOfLeadActivityDto.TotalCount != 0)
+        {
+            <MudPagination SelectedChanged="PageChanged" Count="@((paginationResponseOfLeadActivityDto.TotalCount + paginationResponseOfLeadActivityDto.PageSize - 1) / paginationResponseOfLeadActivityDto.PageSize)" Class="pa-4" />
+        }
+    </PagerContent>
+</MudTable>
+
+@code {
+    [CascadingParameter]
+    protected Task<AuthenticationState> AuthState { get; set; } = default!;
+    [Inject]
+    protected IAuthorizationService AuthService { get; set; } = default!;
+    //protected EntityServerTableContext<LeadActivityDto, Guid, UpdateSkillRequest> Context { get; set; } = default!;
+    //[Inject]
+    //protected IUsersClient UsersClient { get; set; } = default!;
+
+    List<LeadActivityTaskDto> _LeadActivityTaskList = new();
+    PaginationResponseOfLeadActivityTaskDto paginationResponseOfLeadActivityDto = new();
+    int activityCurrentPage = 1;
+    int activityTotalPage;
+    bool isactivityLoading = false;
+    bool isActivityLoaded = false;
+    public string Search { get; set; }
+    public Guid AssignTo { get; set; }
+    private string? _userId;
+    // AssignTo =new Guid( "6E1EA961-5927-4BEA-90D6-E2D3566C84C1";
+    //{)
+    //Guid ownerIdGuid = Guid.Empty;
+    //ownerIdGuid = new Guid("6E1EA961-5927-4BEA-90D6-E2D3566C84C1");
+
+    protected override async void OnInitialized()
+    {
+        // var user = (await AuthState).User;
+        if ((await AuthState).User is { } user)
+        {
+            _userId = user.GetUserId();
+            Guid res = new Guid(_userId);
+            AssignTo = res;
+
+        }
+        await GetLeadActivityTaskList(activityCurrentPage);
+    }
+    private async Task GetLeadActivityTaskList(int pageIndex)
+    {
+        isactivityLoading = true;
+        string[] fields = new string[] { "title", "description" };
+
+        var search = new Search()
+            {
+                Fields = fields,
+                Keyword = Search,
+            };
+
+        paginationResponseOfLeadActivityDto = await LeadActivitiesClient.GetAsyncUserTaskAsync(new SearchLeadAcitivityTaskRequest()
+            {
+                AssignTo = AssignTo,
+                AdvancedSearch = search,
+                PageSize = 10,
+                PageNumber = pageIndex
+            });
+
+        var activityList = paginationResponseOfLeadActivityDto.Data;
+        activityTotalPage = paginationResponseOfLeadActivityDto.TotalPages;
+        _LeadActivityTaskList = activityList.ToList();
+        //if (pageIndex == 1)
+        //    _LeadActivityTaskList = activityList.ToList();
+        //else
+        //    _LeadActivityTaskList.AddRange(activityList.ToList());
+
+        
+        isactivityLoading = false;
+        isActivityLoaded = true;
+        StateHasChanged();
+
+    }
+    private async Task PageChanged(int pageNo)
+    {
+        await GetLeadActivityTaskList(pageNo);
+    }
+    private async Task EditLeadTaskActivity(Guid id)
+    {
+        //ActivityId = id;
+        //OpenDialog();
+        OpenActivityDialog(id);
+    }
+    private async Task DetailLeadTaskActivity(Guid id, Guid? LeadId)
+    {
+        //ActivityId = id;
+        //OpenDialog();
+        OpenDialog(id, LeadId);
+    }
+    private async void OpenActivityDialog(Guid ActId)
+    {
+        var parameters = new DialogParameters
+        {
+            // {
+            //    nameof(AddActivity.LeadId),
+            //    Id
+            //},
+            {
+                 nameof(AddActivity.ActivityId),
+                 ActId
+            },
+            {
+                 nameof(AddActivity.flag),
+
+                 "taskedit"
+            }
+
+
+        };
+
+        var options = new DialogOptions { CloseButton = true, CloseOnEscapeKey = true, DisableBackdropClick = true };
+        var dialog = DialogService.Show<AddTask>("Task", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Cancelled)
+        {
+            await GetLeadActivityTaskList(1);
+        }
+    }
+
+    private async void OpenDialog(Guid ActivityId, Guid? LeadId)
+    {
+        var parameters = new DialogParameters
+        {
+            {
+                nameof(AddActivity.LeadId),
+                LeadId
+            },
+            {
+                 nameof(AddActivity.ActivityId),
+                 ActivityId
+            },
+             {
+                 nameof(AddActivity.flag),
+
+                 "taskdetail"
+            }
+        };
+
+        var options = new DialogOptions { CloseButton = true, CloseOnEscapeKey = true, DisableBackdropClick = true };
+        var dialog = DialogService.Show<AddActivity>("Activities", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Cancelled)
+        {
+            await GetLeadActivityTaskList(1);
+        }
+    }
+}

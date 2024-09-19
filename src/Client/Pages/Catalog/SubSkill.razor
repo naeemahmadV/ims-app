@@ -1,0 +1,52 @@
+﻿@page "/catalog/subskill"
+@attribute [MustHavePermission(FSHAction.View, FSHResource.SubSkill)]
+
+@inject IStringLocalizer<SubSkill> L
+@inject ISubSkillsClient SubSkillsClient
+@inject ISkillsClient SkillsClient
+
+<FshTitle Title="@L["SubSkill"]" Description="@L["Manage Sub Skills."]" />
+
+<EntityTable @ref="_table" TEntity="SubSkillDto" TId="Guid" TRequest="UpdateSubSkillsRequest" Context="@Context">
+    <EditFormContent>
+        <MudItem xs="12" md="6">
+            <MudTextField Label="@L["SubSkillName"]" For="@(() => context.SubSkillName)" @bind-Value="context.SubSkillName" />
+        </MudItem>
+ 
+        @* <MudItem xs="12" md="6">
+            <SkillAutoComplete For="@(() => context.SkillId)" @bind-Value="context.SkillId" OffsetY="true" />
+        </MudItem> *@
+    </EditFormContent>
+
+</EntityTable>
+
+@code {
+
+    protected EntityServerTableContext<SubSkillDto, Guid, UpdateSubSkillsRequest> Context { get; set; } = default!;
+
+    private EntityTable<SubSkillDto, Guid, UpdateSubSkillsRequest> _table = default!;
+
+    protected override void OnInitialized() =>
+        Context = new(
+            entityName: L["SubSkill"],
+            entityNamePlural: L["SubSkills"],
+            entityResource: FSHResource.SubSkill,
+            fields: new()
+                {
+                new(subSkill => subSkill.Id, L["Id"], "Id"),
+                new(subSkill => subSkill.SubSkillName, L["SubSkillName"], "SubSkillName"),
+                new(subSkill => subSkill.SkillName, L["SkillName"], "Skill.Name"),
+                },
+            enableAdvancedSearch: true,
+            idFunc: subSkill => subSkill.Id,
+
+            searchFunc: async filter => (await SubSkillsClient
+                .SearchAsync(filter.Adapt<SearchSubSkillsRequest>()))
+                .Adapt<PaginationResponse<SubSkillDto>>(),
+
+            createFunc: async subSkill => await SubSkillsClient.CreateAsync(subSkill.Adapt<CreateSubSkillRequest>()),
+
+            updateFunc: async (id, subSkill) => await SubSkillsClient.UpdateAsync(id, subSkill),
+
+            deleteFunc: async id => await SubSkillsClient.DeleteAsync(id));
+}

@@ -1,0 +1,199 @@
+﻿@inject ILeadActivityClient LeadActivitiesClient
+@inject IMediaClient MediaClient
+@inject ISnackbar snackbar
+@inject IUserClient UsersClient
+<MudDialog>
+    <DialogContent>
+        <EditForm Model="@_activityModel" OnValidSubmit="SaveUpdateLeadActivityTask">
+            <MudGrid Justify="Justify.FlexStart">
+                <DataAnnotationsValidator />
+                <MudItem xs="12">
+                    <MudItem xs="12" Class="d-flex  mud-width-full">
+                        <MudText Align="Align.Left" Class="mb-n4">Task Start Date</MudText>
+                    </MudItem>
+                    <MudItem xs="12" Class="d-flex align-center justify-center pb-6 mud-width-full">
+                        @if(_activityModel.TaskStartDate!=null){
+                        <MudDatePicker For="@(() => _activityModel.TaskStartDate)" @bind-Date="_activityModel.TaskStartDate" ReadOnly=true />
+
+                        }
+                        else{
+                        <MudDatePicker For="@(() => _activityModel.TaskStartDate)" @bind-Date="_activityModel.TaskStartDate" />
+
+                        }
+                        @*<MudTextField T="DateTime?" For="@(() => _activityModel.TaskStartDate)" @bind-Value="_activityModel.TaskStartDate" />*@
+                    </MudItem>
+
+                    <MudItem xs="12" Class="d-flex  pb-6 mud-width-full">
+                        <MudText Align="Align.Left" Class="mb-n4">Task Due Date</MudText>
+                    </MudItem>
+                    <MudItem xs="12" Class="d-flex align-center justify-center pb-6 mud-width-full">
+                        @*<MudTextField T="DateTime?" For="@(() => _activityModel.TaskDueDate)" @bind-Value="_activityModel.TaskDueDate" />*@
+                        @if(_activityModel.TaskDueDate!=null){
+                        <MudDatePicker T="DateTime" For="@(() => _activityModel.TaskDueDate)" @bind-Date="_activityModel.TaskDueDate" ReadOnly=true />
+
+                        }
+                        else{
+                        <MudDatePicker T="DateTime" For="@(() => _activityModel.TaskDueDate)" @bind-Date="_activityModel.TaskDueDate"  />
+
+                        }
+                    </MudItem>
+                   
+
+                    
+                    <MudItem xs="12" Class="d-flex  pb-6 mud-width-full">
+                        <MudText Align="Align.Left" Class="mb-n4">Task Status</MudText>
+                    </MudItem>
+                    <MudItem xs="12" Class="d-flex align-center justify-center pb-6 mud-width-full">
+                        @*<MudRadioGroup T="int" For="@(() => _activityModel.TaskStatus)" @bind-SelectedOption="_activityModel.TaskStatus">
+                            @*<MudRadio Option="1" Color="Color.Secondary">Start</MudRadio>
+                            <MudRadio Option="2" Color="Color.Secondary" >In progress</MudRadio>
+                            <MudRadio Option="3" Color="Color.Secondary" >Hold</MudRadio>
+
+                            <MudRadio Option="4" Color="Color.Secondary">Completed</MudRadio>*@
+                        @* @foreach (TasksStatus method in Enum.GetValues(typeof(TasksStatus)))
+                            {
+                                <MudRadio T="int?" Option="@((int)method)"  Color="Color.Secondary">@method</MudRadio>
+                            }
+
+                        </MudRadioGroup>*@
+
+                        <MudSelect T="int" For="@(() => _activityModel.TaskStatus)" @bind-Value="_activityModel.TaskStatus">
+                            @foreach (TasksStatus method in Enum.GetValues(typeof(TasksStatus)))
+                            {
+                                <MudSelectItem T="int" Value="@((int)method)">@method</MudSelectItem>
+                            }
+                        </MudSelect>
+
+                     
+                    </MudItem>
+                    @if (flag != "taskedit")
+                    {
+
+                        <MudItem xs="12" Class="d-flex  pb-6 mud-width-full">
+                            <MudText Align="Align.Left" Class="mb-n4">Task Assign</MudText>
+                        </MudItem>
+                        <MudItem xs="12" Class="d-flex  pb-6 mud-width-full">
+                            <MudAutocomplete T="UserDto" SearchFunc="@SearchUser" Placeholder="Select User" @bind-Value="userValue"
+                                         ToStringFunc="@(e=> e==null?null : e.UserName)" />
+                    </MudItem>
+                    }
+
+                </MudItem>
+               
+
+                <MudItem xs="12" Class="d-flex align-center justify-end mud-width-full ">
+                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="Cancel" StartIcon="@Icons.Filled.Close" Class="ml-auto">
+                        Close
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit" StartIcon="@Icons.Filled.Save" Class="ml-2">
+                        @(ActivityId == Guid.Empty ? "Save" : "Update")
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        @*   <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton> *@
+
+    </DialogActions>
+</MudDialog>
+
+
+@code {
+    [CascadingParameter]
+    MudDialogInstance MudDialog { get; set; }
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(true));
+    void Cancel() => MudDialog.Cancel();
+    protected UpdateLeadActivityRequest _activityModel = new();
+    private List<Guid> ActivityAttachment = new();
+    // private CreateMediaRequest createMediaRequest = new();
+    List<UserDetailsDto> _userList = new();
+    // private PaginationResponseOfUserDto users = new();
+    private UserDto? userValue;
+    List<UserDto> users = new();
+
+
+
+    [Parameter]
+    public Guid LeadId { get; set; }
+
+    [Parameter]
+    public Guid ActivityId { get; set; }
+
+    [Parameter]
+    public string flag { get; set; }
+
+
+    protected override async void OnInitialized()
+    {
+        if (ActivityId != Guid.Empty)
+            await EditLeadActivity(ActivityId);
+        await Task.WhenAll(GetUsers());
+    }
+
+    private async Task SaveUpdateLeadActivityTask()
+    {
+
+        var updateLeadActivityTaskRequest = _activityModel;
+        updateLeadActivityTaskRequest.Id = ActivityId;
+        updateLeadActivityTaskRequest.MarkAsTask = true;
+        if (updateLeadActivityTaskRequest.TaskStartDate == null)
+        {
+            snackbar.Add("Please fill task start date.", Severity.Error);
+            return;
+        }
+        if (updateLeadActivityTaskRequest.TaskDueDate == null)
+        {
+            snackbar.Add("Please fill task due date.", Severity.Error);
+            return;
+
+        }
+
+        if (userValue!=null)
+        {
+
+            updateLeadActivityTaskRequest.AssignTo = userValue.Id;
+        }
+        if (updateLeadActivityTaskRequest.TaskStatus == 3)
+        {
+            updateLeadActivityTaskRequest.TaskCompletedOn = DateTime.Now;
+        }
+
+        await LeadActivitiesClient.UpdateAsync(ActivityId, updateLeadActivityTaskRequest);
+        snackbar.Add("Updated Successfully.", Severity.Success);
+        Submit();
+
+    }
+    private async Task EditLeadActivity(Guid id)
+    {
+        GetUsers();
+
+        ActivityId = id;
+
+
+        var result = await LeadActivitiesClient.GetAsync(id);
+        _activityModel = result.Adapt<UpdateLeadActivityRequest>();
+
+        userValue = users.Where(x => x.Id == _activityModel.AssignTo).FirstOrDefault();
+
+
+
+
+        StateHasChanged();
+    }
+
+    private async Task GetUsers() =>
+         //  users = await UsersClient.SearchAsync(new SearchUserRequest());
+    users = await UsersClient.GetUserSearchAsync(new SearchUserRequest());
+   
+    private async Task<IEnumerable<UserDto>> SearchUser(string value)
+    {
+        // if text is null or empty, show complete list
+        if (string.IsNullOrEmpty(value))
+            return users;
+
+        return users.Where(x => x.UserName.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+    }
+}

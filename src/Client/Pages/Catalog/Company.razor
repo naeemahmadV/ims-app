@@ -1,0 +1,41 @@
+﻿@page "/catalog/company"
+@attribute [MustHavePermission(FSHAction.View, FSHResource.Company)]
+
+@inject IStringLocalizer<Company> L
+@inject ICompanyClient CompanyClient
+
+<FshTitle Title="@L["Company"]" Description="@L["Manage Company"]" />
+
+<EntityTable TEntity="CompanyDto" TId="Guid" TRequest="UpdateCompanyRequest" Context="@Context">
+
+    <EditFormContent>
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" For="@(() => context.Name)" @bind-Value="context.Name" Label="@L["Name"]" />
+        </MudItem>
+    </EditFormContent>
+
+</EntityTable>
+
+@code
+{
+    protected EntityServerTableContext<CompanyDto, Guid, UpdateCompanyRequest> Context { get; set; } = default!;
+
+    protected override void OnInitialized() =>
+        Context = new(
+            entityName: L["Company"],
+            entityNamePlural: L["Company"],
+            entityResource: FSHResource.Company,
+            fields: new()
+                {
+                new(company => company.Id, L["Id"], "Id"),
+                new(company => company.Name, L["Name"], "Name")
+                },
+            idFunc: company => company.Id,
+            searchFunc: async filter => (await CompanyClient
+                .SearchAsync(filter.Adapt<SearchCompanyRequest>()))
+                .Adapt<PaginationResponse<CompanyDto>>(),
+            createFunc: async company => await CompanyClient.CreateAsync(company.Adapt<CreateCompanyRequest>()),
+            updateFunc: async (id, company) => await CompanyClient.UpdateAsync(id, company),
+            deleteFunc: async id => await CompanyClient.DeleteAsync(id),
+            exportAction: string.Empty);
+}

@@ -1,0 +1,189 @@
+﻿@using System.Linq;
+
+<style>
+    .suggestion-container {
+        position: relative;
+        width: 100%
+    }
+
+    .tagsinput, .tagsinput * {
+        box-sizing: border-box
+    }
+
+    .tagsinput {
+        display: -webkit-box;
+        display: -webkit-flex;
+        display: -ms-flexbox;
+        display: flex;
+        -webkit-flex-wrap: wrap;
+        -ms-flex-wrap: wrap;
+        flex-wrap: wrap;
+        background: #fff;
+        font-size: 14px;
+        line-height: 20px;
+        height: auto;
+        color: #556270;
+        /*padding: 5px 5px 0;*/
+        border: 1px solid #bcb6b6;
+        border-radius: 3px;
+        max-height: 100px;
+        overflow: hidden;
+        overflow-y: auto;
+    }
+
+        .tagsinput.focus {
+            border-color: #ccc
+        }
+
+        .tagsinput .tag {
+            position: relative;
+            background: #556270;
+            display: block;
+            max-width: 100%;
+            word-wrap: break-word;
+            color: #fff;
+            padding: 5px 30px 5px 5px;
+            border-radius: 2px;
+            margin: 0 5px 5px 0
+        }
+
+            .tagsinput .tag .tag-remove {
+                position: absolute;
+                background: 0 0;
+                display: block;
+                width: 30px;
+                height: 30px;
+                top: 0;
+                right: 0;
+                cursor: pointer;
+                text-decoration: none;
+                text-align: center;
+                color: #ff6b6b;
+                line-height: 30px;
+                padding: 0;
+                border: 0
+            }
+
+                .tagsinput .tag .tag-remove:after, .tagsinput .tag .tag-remove:before {
+                    background: #ff6b6b;
+                    position: absolute;
+                    display: block;
+                    width: 10px;
+                    height: 2px;
+                    top: 14px;
+                    left: 10px;
+                    content: ''
+                }
+
+                .tagsinput .tag .tag-remove:before {
+                    -webkit-transform: rotateZ(45deg);
+                    transform: rotateZ(45deg)
+                }
+
+                .tagsinput .tag .tag-remove:after {
+                    -webkit-transform: rotateZ(-45deg);
+                    transform: rotateZ(-45deg)
+                }
+
+        .tagsinput div {
+            -webkit-box-flex: 1;
+            -webkit-flex-grow: 1;
+            -ms-flex-positive: 1;
+            flex-grow: 1
+        }
+
+            .tagsinput div input {
+                background: 0 0;
+                display: block;
+                width: 100%;
+                font-size: 14px;
+                line-height: 20px;
+                padding: 8px 5px 0px 5px;
+                border: 0;
+                margin: 0 5px 5px 0
+            }
+
+                .tagsinput div input:focus {
+                    color: #495057;
+                    background-color: #fff;
+                    /*border-color: #80bdff;*/
+                    outline: 0;
+                    /*box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);*/
+                }
+
+                .tagsinput div input.error {
+                    color: #ff6b6b
+                }
+
+                .tagsinput div input::-ms-clear {
+                    display: none
+                }
+
+                .tagsinput div input::-webkit-input-placeholder {
+                    color: #bcb6b6;
+                    opacity: 1
+                }
+
+                .tagsinput div input:-moz-placeholder {
+                    color: #ccc;
+                    opacity: 1
+                }
+
+                .tagsinput div input::-moz-placeholder {
+                    color: #ccc;
+                    opacity: 1
+                }
+
+                .tagsinput div input:-ms-input-placeholder {
+                    color: #ccc;
+                    opacity: 1
+                }
+
+    [id$="_addSubSkill"] ul {
+        z-index: 99999999;
+        cursor: pointer;
+        position: absolute;
+        /* Your CSS styles here */
+    }
+</style>
+
+<div class="suggestion-container" style="width:100%">
+    <div id="@($"{Id}_subskillsinput")" class="tagsinput">
+        @if (SubSkills != null && SubSkills.Any())
+        {
+            @foreach (var skill in SubSkills)
+            {
+                <MudChip Label="true" Color="Color.Info" Style="max-width:fit-content;height:30px" OnClose="() => DeleteSubSkill(skill)">@skill</MudChip>
+            }
+        }
+        <div id="@($"{Id}_addSubSkill")">
+            <div class="@(IsContainSpecialCharacter ? "skill-tooltip" : string.Empty)">
+                <input id="@($"{Id}_skill")"
+                       class="tag-input"
+                       placeholder="Enter Sub Skill ..."
+                       autocomplete="off"
+                @bind-value="Value"
+                @bind-value:event="oninput"
+                @onkeyup="(() => GetMatchedSubSkills(Value))"
+                @onclick="(() => AddSelectedSubSkills(Value))" />
+                @if (_matchedSubSkillList.Count > 0)
+                {
+                    <ul style="padding: 5px; border: 1px solid #bcb6b6;max-width:fit-content;background:#fff">
+                        @foreach (var skill in _matchedSubSkillList)
+                        {
+                            <li @onclick="(() => AddSelectedSubSkills(skill))">@skill</li>
+                        }
+                    </ul>
+                }
+                @if (IsContainSpecialCharacter)
+                {
+                    <div class="error-right d-inline-flex p-2">
+                        <i class="oi oi-warning text-warning p-1"></i>
+                        <p class="text-left m-0 p-1">Special characters not allowed.</p>
+                        <i></i>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

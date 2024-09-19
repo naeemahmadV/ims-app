@@ -1,0 +1,227 @@
+﻿@inject IAccountActivitiesClient AccountActivitiesClient
+@inject IMediasClient MediaClient
+@inject ISnackbar snackbar
+<MudDialog>
+    <DialogContent>
+        <EditForm Model="@_activityModel" OnValidSubmit="SaveUpdateAccountActivity">
+            <MudGrid Justify="Justify.FlexStart">
+                <DataAnnotationsValidator />
+                <MudItem xs="12">
+                    <MudItem xs="12" Class="d-flex  mud-width-full">
+                        <MudText Align="Align.Left" Class="mb-n4">Title</MudText>
+                    </MudItem>
+                    <MudItem xs="12" Class="d-flex align-center justify-center pb-6 mud-width-full">
+                        <MudTextField T="string" For="@(() => _activityModel.Title)" @bind-Value="_activityModel.Title" />
+                    </MudItem>
+
+                    <MudItem xs="12" Class="d-flex  pb-6 mud-width-full">
+                        <MudText Align="Align.Left" Class="mb-n4">Description</MudText>
+                    </MudItem>
+                    <MudItem xs="12" Class="d-flex align-center justify-center pb-6 mud-width-full">
+                        <CkEditor @ref="ckDescription" InitialContent="@_activityModel.Description" EditorId="editorDescription"></CkEditor>
+                    </MudItem>
+                    @if (flag != "taskdetail")
+                    {
+                        <MudItem xs="12" Class="d-flex  pb-6 mud-width-full">
+                            <div>
+                                <MudButton HtmlTag="label"
+                                                  DisableElevation Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                            StartIcon="@Icons.Filled.CloudUpload" for="activityFileInput">
+                                     Upload
+                                 </MudButton>
+                                 @if (activityFileNames.Count > 0)
+                                {
+                                    <MudButton HtmlTag="label"
+                                                      DisableElevation Variant="Variant.Filled" Color="Color.Warning" Size="Size.Small" Target="_blank"
+                                                StartIcon="@Icons.Filled.Clear" Style="margin-left: 5px;" OnClick="ClearActivityImageInBytes">
+                                         Clear
+                                     </MudButton>
+                                }
+                                @if (activityFileNames.Count > 0)
+                                {
+                                    <ul>
+                                        @foreach (var fileName in activityFileNames)
+                                        {
+                                            <li>@fileName</li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+                            <InputFile multiple id="activityFileInput" hidden OnChange="UploadActivityFiles" />
+                        </MudItem>
+
+
+                        <MudItem xs="12" Class="d-flex align-center justify-end mud-width-full ">
+                            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="Cancel" StartIcon="@Icons.Filled.Close" Class="ml-auto">
+                                Close
+                            </MudButton>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit" StartIcon="@Icons.Filled.Save" Class="ml-2">
+                                @(ActivityId == Guid.Empty ? "Save" : "Update")
+                            </MudButton>
+                        </MudItem>
+                    }
+                </MudItem>
+            </MudGrid>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        @*   <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton> *@
+
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    MudDialogInstance MudDialog { get; set; }
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(true));
+    void Cancel() => MudDialog.Cancel();
+
+    protected UpdateAccountActivityRequest _activityModel = new();
+    private List<Guid> ActivityAttachment = new();
+    private CreateMediaRequest createMediaRequest = new();
+
+    [Parameter]
+    public Guid LeadId { get; set; }
+
+    [Parameter]
+    public Guid AccountId { get; set; }
+
+    [Parameter]
+    public Guid ActivityId { get; set; }
+
+    [Parameter]
+    public string flag { get; set; }
+
+    CkEditor ckDescription;
+
+    protected override async void OnInitialized()
+    {
+        if (ActivityId != Guid.Empty)
+            await EditAccountActivity(ActivityId);
+    }
+
+    public async Task SaveUpdateAccountActivity()
+    {
+        if (ActivityId == Guid.Empty)
+        {
+            var createAccountActivityRequest = _activityModel.Adapt<CreateAccountActivityRequest>();
+            createAccountActivityRequest.AccountId = AccountId;
+            createAccountActivityRequest.Description = await ckDescription.GetData("editorDescription");
+            if (ActivityAttachment.Count() > 0)
+                createAccountActivityRequest.ActivityMedia = ActivityAttachment.ToArray();
+
+            await AccountActivitiesClient.CreateAsync(createAccountActivityRequest);
+            snackbar.Add("Saved Successfully.", Severity.Success);
+        }
+        else
+        {
+            var updateAccountActivityRequest = _activityModel;
+            updateAccountActivityRequest.AccountId = AccountId;
+            updateAccountActivityRequest.Description = await ckDescription.GetData("editorDescription");
+            if (ActivityAttachment.Count() > 0)
+                updateAccountActivityRequest.ActivityMedia = ActivityAttachment.ToArray();
+
+            await AccountActivitiesClient.UpdateAsync(ActivityId, updateAccountActivityRequest);
+            snackbar.Add("Updated Successfully.", Severity.Success);
+        }
+        ClearActivity();
+    }
+
+    private async void ClearActivity()
+    {
+        _activityModel = new();
+        ActivityAttachment = new();
+        activityFileNames = new();
+        ActivityId = Guid.Empty;
+        await ckDescription.ResetData("editorDescription");
+        Submit();
+        StateHasChanged();
+    }
+
+    private List<string> activityFileNames = new List<string>();
+    private async Task UploadActivityFiles(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            foreach (var file in e.GetMultipleFiles())
+            {
+                // Process each file here
+                activityFileNames.Add(file.Name);
+
+                string? extension = Path.GetExtension(file.Name);
+                if (!ApplicationConstants.SupportedImageFormats.Contains(extension.ToLower()))
+                {
+                    Snackbar.Add("File Format Not Supported.", Severity.Error);
+                    return;
+                }
+
+                UploadRequest uploadRequest = new();
+                uploadRequest.FileName = file.Name;
+                uploadRequest.Extension = extension;
+                uploadRequest.UploadType = UploadType.Document;
+
+                var imageFile = await file.RequestImageFileAsync(ApplicationConstants.StandardImageFormat, ApplicationConstants.MaxImageWidth, ApplicationConstants.MaxImageHeight);
+                byte[]? buffer = new byte[imageFile.Size];
+                await imageFile.OpenReadStream(ApplicationConstants.MaxAllowedSize).ReadAsync(buffer);
+                uploadRequest.Data = $"data:{ApplicationConstants.StandardImageFormat};base64,{Convert.ToBase64String(buffer)}";
+
+                createMediaRequest.MediaGuid = Guid.NewGuid();
+                createMediaRequest.Active = true;
+                createMediaRequest.Deleted = false;
+                createMediaRequest.MediaName = file.Name;
+                createMediaRequest.Image = uploadRequest;
+                createMediaRequest.AltAttribute = "";
+                createMediaRequest.MimeType = "";
+                createMediaRequest.TitleAttribute = "";
+                createMediaRequest.PathURL = "";
+
+                var Id = await MediaClient.CreateAsync(createMediaRequest);
+
+                ActivityAttachment.Add(Id);
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+        }
+
+    }
+
+    public void ClearActivityImageInBytes()
+    {
+        activityFileNames = new List<string>();
+        ActivityAttachment = new List<Guid>();
+        StateHasChanged();
+    }
+
+    private List<string> fileNames = new List<string>();
+
+    private async Task EditAccountActivity(Guid id)
+    {
+
+        ActivityId = id;
+
+
+        var result = await AccountActivitiesClient.GetAsync(id);
+        _activityModel = result.Adapt<UpdateAccountActivityRequest>();
+
+        var attachments = result.ActivityMedias?.Select(x => x.MediaId).ToList();
+
+        if (attachments is not null)
+            ActivityAttachment = attachments;
+
+        var fileNamesList = result.ActivityMedias?.Select(x => x.Media?.MediaName).ToList();
+
+        if (fileNamesList is not null)
+            activityFileNames = fileNamesList;
+
+
+        StateHasChanged();
+    }
+
+
+}

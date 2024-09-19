@@ -1,0 +1,372 @@
+﻿@page "/catalog/accounts"
+@using FSH.BlazorWebAssembly.Client.Components.Dialogs;
+
+@inject IAccountsClient AccountsClient
+@inject NavigationManager _navigation
+@inject ISnackbar snackbar
+@inject IUsersClient UsersClient
+
+<style>
+    .td_click {
+        text-decoration: underline;
+        color: #0f0fca !important;
+    }
+
+        .td_click:hover {
+            cursor: pointer;
+            text-decoration: underline;
+            color: #0f0fca !important;
+        }
+
+    .mud-table-toolbar {
+        flex-wrap: wrap;
+        margin-bottom: 35px !important;
+    }
+</style>
+<FshTitle Title="Account" Description="Manage Account" />
+<MudTable Hover="true" Elevation="2" Items="_AccountList" Filter=" new Func<AccountDto,bool>(Search)" @bind-user="_project">
+    <ToolBarContent>
+        <MudSpacer />
+
+        <MudItem xs="12" md="2">
+            <MudButton DisableElevation Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" @onclick="CreateAccount">Create</MudButton>
+         </MudItem>
+         <MudItem xs="12" md="3">
+             <MudSelect Class="mr-2" T="int" Placeholder="Select Year" @bind-Value="currentYear" SelectedValuesChanged="YearChangeEvent" AnchorOrigin="Origin.BottomCenter">
+                 <MudSelectItem Value="0">Select Year</MudSelectItem>
+                 @if (_AccountYears is not null && _AccountYears.Count() > 0)
+                {
+                    foreach (var item in _AccountYears)
+                    {
+                        <MudSelectItem Value="@(item.Year)">@(item.Year + " (" + item.Count + ")")</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect Class="mr-2" T="int" Placeholder="Select Month" @bind-Value="currentMonth" SelectedValuesChanged="MonthChangeEvent" AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem Value="0">Select Month</MudSelectItem>
+                @if (_AccountMonths is not null && _AccountMonths.Count() > 0)
+                {
+                    foreach (Months month in Enum.GetValues(typeof(Months)))
+                    {
+                        <MudSelectItem Value="@((int)month)">@(month + " (" + GetAccountByMonth((int)month) + ")")</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect Class="mr-2" T="int" Placeholder="Select Day" @bind-Value="currentDay" AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem Value="0">Select Day</MudSelectItem>
+                @if (_AccountDays is not null && _AccountDays.Count() > 0)
+                {
+                    foreach (var day in Days)
+                    {
+                        <MudSelectItem Value="@(day)">@(day + " (" + GetAccountByDay(day) + ")")</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="3">
+        </MudItem>
+        <MudItem Class="mb-3" xs="12" md="3">
+            <MudTextField Class="mr-2" @bind-Value="name" Label="Search by Name" Variant="Variant.Text"></MudTextField>
+        </MudItem>
+        <MudItem Class="mb-3" xs="12" md="3">
+            <MudSelect Class="mr-2" T="bool" @bind-Value="createdOnOrder" Placeholder="Order By Created On" AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem Value="false">Created On Desc</MudSelectItem>
+                <MudSelectItem Value="true">Created On Asc</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem Class="mb-3" xs="12" md="3">
+            <MudButton Class="mr-3" StartIcon="@Icons.Material.Filled.Search" Variant="Variant.Filled" Color="Color.Primary" OnClick="SearchAccount">Search</MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Clear" Variant="Variant.Filled" Color="Color.Secondary" OnClick="Clear">Clear</MudButton>
+        </MudItem>
+    </ToolBarContent>
+
+    <HeaderContent>
+        <MudTh><MudTableSortLabel SortBy="new Func<AccountDto, object>(x => x.FirstName)">Name</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<AccountDto, object>(x => x.Topic)">Topic</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<AccountDto, object>(x => x.AccountSkills)">Skill</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<AccountDto, object>(x => x.AccountSubSkills)">Sub Skill</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<AccountDto, object>(x => x.AccountStatus)">Status</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<AccountDto, object>(x => x.CreatedOn)">Created On</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<AccountDto, object>(x => x.CreatedBy)">Owner</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<AccountDto, object>(x => x.TimeZone)">TimeZone</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<AccountDto, object>(x => x.Rating)">Rating</MudTableSortLabel></MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+
+        <MudTd Class="td_click" @onclick="(()=>EditAccount(context.Id))" DataLabel="Name">
+            <MudHighlighter Text="@(context.FirstName+" "+context?.LastName)" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@context.Topic" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@(string.Join(',',context.AccountSkills.Select(x=>x.Skill?.Name).ToArray()))" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@(string.Join(',',context.AccountSubSkills.Select(x=>x.SubSkill?.SubSkillName).ToArray()))" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@(Enum.GetName(typeof(AccountStatus), Convert.ToInt32(context.AccountStatus)))" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@(context.CreatedOn.ToString("dd MMM yyyy hh:mm tt"))" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@(GetAuthor(context.CreatedBy))" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@(GetTimeZone(context.TimeZone))" HighlightedText="@_searchString" />
+        </MudTd>
+        <MudTd>
+            <MudHighlighter Text="@(context.Rating.ToString())" HighlightedText="@_searchString" />
+        </MudTd>
+    </RowTemplate>
+
+    <PagerContent>
+        @if (paginationResponseOfAccountDto.TotalCount != 0)
+        {
+            <MudPagination SelectedChanged="PageChanged" Count="@((paginationResponseOfAccountDto.TotalCount + paginationResponseOfAccountDto.PageSize - 1) / paginationResponseOfAccountDto.PageSize)" Class="pa-4" />
+        }
+    </PagerContent>
+
+</MudTable>
+@code {
+    [CascadingParameter]
+    protected Task<AuthenticationState> AuthState { get; set; } = default!;
+    [Inject]
+    protected IAuthorizationService AuthService { get; set; } = default!;
+
+    List<AccountDto> _AccountList = new();
+    List<AccountYearDto> _AccountYears = new();
+    List<AccountMonthDto> _AccountMonths = new();
+    List<AccountDayDto> _AccountDays = new();
+    List<int> Days = new();
+    int currentYear;
+    int currentMonth;
+    int currentDay;
+    bool createdOnOrder;
+    string name;
+    string userRole;
+    Guid userId;
+    private string? _userId;
+    AccountDto _project = new AccountDto();
+    private string _searchString = "";
+    PaginationResponseOfAccountDto paginationResponseOfAccountDto = new();
+    List<UserDetailsDto> _userList = new();
+    private bool _canSearchRoles;
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState;
+        _canSearchRoles = await AuthService.HasPermissionAsync(state.User, FSHAction.View, FSHResource.UserRoles);
+        if ((await AuthState).User is { } user)
+        {
+            _userId = user.GetUserId();
+            Guid res = new Guid(_userId);
+            userId = res;
+            // var result = await UsersClient.GetRolesAsync(_userId);
+            //   userRole = result.Where(x => x.Enabled == true).Select(x => x.RoleName).FirstOrDefault();
+        }
+        await GetAccountYears();
+        await GetList();
+    }
+
+    private async Task GetList(int pageNumber = 1, int PageSize = 25, int? year = null, int? month = null, int? day = null, bool createdOnOrder = false)
+    {
+        string[] fields = new string[] { "firstname", "lastname" };
+        var search = new Search()
+            {
+                Fields = fields,
+                Keyword = name
+            };
+
+        paginationResponseOfAccountDto = await AccountsClient.SearchAsync(new SearchAccountRequest()
+            {
+                PageNumber = pageNumber,
+                PageSize = PageSize,
+                Year = year,
+                Month = month,
+                Day = day,
+                CreatedOnOrder = createdOnOrder,
+                AdvancedSearch = search,
+                UserId = userId,
+                UserRole = userRole
+            });
+
+        _AccountList = paginationResponseOfAccountDto.Data.ToList();
+
+        if (_AccountList.Count() > 0)
+        {
+            var usersIds = _AccountList.Select(x => x.CreatedBy.ToString()).Distinct().ToArray();
+            _userList = (await UsersClient.GetListByIdsAsync(usersIds)).ToList();
+        }
+
+    }
+
+    private async Task PageChanged(int pageNo)
+    {
+        await GetList(pageNo);
+    }
+
+    private async Task SearchAccount()
+    {
+        await GetList(1, 25, currentYear, currentMonth, currentDay, createdOnOrder);
+    }
+
+    private bool Search(AccountDto client)
+    {
+        if (string.IsNullOrWhiteSpace(_searchString)) return true;
+        if (client.Id.ToString().Contains(_searchString, StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return true;
+        }
+        if (client?.FirstName?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private void CreateAccount()
+    {
+        _navigation.NavigateTo("/catalog/addaccount");
+    }
+
+    private void EditAccount(Guid Id)
+    {
+        _navigation.NavigateTo("/catalog/addaccount/" + Id);
+    }
+
+    private async Task DeleteAccount(Guid Id)
+    {
+        string deleteContent = "You're sure you want to delete Account!";
+
+        var parameters = new DialogParameters
+        {
+            { nameof(DeleteConfirmation.ContentText), deleteContent }
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true, DisableBackdropClick = true };
+        var dialog = DialogService.Show<DeleteConfirmation>("Delete", parameters, options);
+        var result = await dialog.Result;
+        if (!result.Cancelled)
+        {
+            await AccountsClient.DeleteAsync(Id);
+            snackbar.Add("Deleted Successfully.", Severity.Success);
+        }
+
+    }
+
+    private System.Collections.ObjectModel.ReadOnlyCollection<TimeZoneInfo> timeZones = TimeZoneInfo.GetSystemTimeZones();
+    private string GetTimeZone(string Id)
+    {
+        try
+        {
+            var timezone = timeZones.Where(x => x.Id == Id).First();
+            if (timezone is null)
+                return "";
+            else
+                return timezone.DisplayName;
+        }
+        catch (Exception)
+        {
+
+        }
+        return "";
+    }
+
+    private string GetAuthor(Guid Id)
+    {
+        var user = _userList.FirstOrDefault(x => x.Id == Id);
+
+        return user?.FirstName + " " + user?.LastName ?? "";
+
+    }
+
+    private async void Clear()
+    {
+        currentYear = 0;
+        currentMonth = 0;
+        currentDay = 0;
+        name = string.Empty;
+        createdOnOrder = false;
+        await GetAccountYears();
+        await GetList();
+        StateHasChanged();
+    }
+
+    private async void YearChangeEvent(IEnumerable<int> years)
+    {
+        await GetAccountMonths(currentYear);
+    }
+
+    private async void MonthChangeEvent(IEnumerable<int> months)
+    {
+        await GetAccountDays(currentYear, currentMonth);
+        GetMonthDates(currentMonth);
+    }
+
+    private async Task GetAccountYears()
+    {
+        _AccountYears = await AccountsClient.AccountYearAsync();
+
+        if (_AccountYears is not null && _AccountYears.Count() > 0)
+        {
+            currentYear = _AccountYears[0].Year;
+            await GetAccountMonths(_AccountYears[0].Year);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task GetAccountMonths(int year)
+    {
+
+        _AccountMonths = await AccountsClient.GetAccountCountMonthWiseAsync(year);
+
+    }
+
+    private async Task GetAccountDays(int year, int month)
+    {
+       
+        _AccountDays = await AccountsClient.GetAccountCountDayWiseAsync(year, month);
+    }
+
+    private int GetAccountByMonth(int month)
+    {
+        if (_AccountMonths is not null && _AccountMonths.Count > 0)
+        {
+            var accounts = _AccountMonths.Where(x => x.Month == month).FirstOrDefault();
+            if (accounts is not null)
+                return accounts.Count;
+        }
+        return 0;
+    }
+
+    private int? GetAccountByDay(int day)
+    {
+        if (_AccountDays is not null && _AccountDays.Count > 0)
+        {
+            var accounts = _AccountDays.Where(x => x.Day == day).FirstOrDefault();
+            if (accounts is not null)
+                return accounts.Count;
+        }
+        return 0;
+    }
+
+    private void GetMonthDates(int month)
+    {
+        Days = new();
+        DateTime firstDayOfMonth = new DateTime(currentYear, month, 1);
+        DateTime lastDayOfMonth = new DateTime(currentYear, month, DateTime.DaysInMonth(currentYear, month));
+
+        for (DateTime date = firstDayOfMonth; date <= lastDayOfMonth; date = date.AddDays(1))
+        {
+            Days.Add(date.Day);
+        }
+    }
+}
